@@ -1,12 +1,13 @@
 package providers
 
 import (
-	"ai/sdk"
-	"ai/stream"
 	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
+
+	"github.com/unsafe0x0/ai/sdk"
+	"github.com/unsafe0x0/ai/stream"
 )
 
 type OpenRouterProvider struct {

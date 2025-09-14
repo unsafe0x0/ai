@@ -1,8 +1,6 @@
 package main
 
 import (
-	"ai/providers"
-	"ai/sdk"
 	"bufio"
 	"context"
 	"fmt"
@@ -10,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/joho/godotenv"
+	"github.com/unsafe0x0/ai/providers"
+	"github.com/unsafe0x0/ai/sdk"
 )
 
 func main() {
@@ -20,7 +20,7 @@ func main() {
 	}
 
 	apiKey := os.Getenv("OPEN_ROUTER_API_KEY")
-	modelID := "openrouter/sonoma-sky-alpha" // Replace with your desired model ID
+	modelID := "openrouter/sonoma-sky-alpha"                                    // Replace with your desired model ID
 	systemInstruction := "You are unsafeai based on ai sdk built by unsafezero" // Optional: set a system instruction here
 
 	var client *sdk.SDK
