@@ -1,0 +1,42 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, build output
+*.test
+*.out
+
+# Coverage and profiles
+coverage.out
+*.coverprofile
+*.prof
+*.pprof
+
+# Build directories
+bin/
+pkg/
+
+# Vendor (uncomment if you don't check vendor into VCS)
+# vendor/
+
+# Old vendoring tool
+Godeps/
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*~
+*.tmp
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.*
