@@ -8,44 +8,43 @@ import (
 	"strings"
 
 	"github.com/joho/godotenv"
-	"github.com/unsafe0x0/ai/providers"
-	"github.com/unsafe0x0/ai/sdk"
+	"github.com/unsafe0x0/ai"
 )
 
 func main() {
-
-	ctx := context.Background()
-	if err := godotenv.Load(); err != nil {
-		fmt.Println("No .env file loaded:", err)
-	}
+	_ = godotenv.Load()
 
 	apiKey := os.Getenv("OPEN_ROUTER_API_KEY")
-	modelID := "openrouter/sonoma-sky-alpha"                                    // Replace with your desired model ID
-	systemInstruction := "You are unsafeai based on ai sdk built by unsafezero" // Optional: set a system instruction here
-
-	var client *sdk.SDK
-	openRouterProvider := providers.OpenRouterProvider{APIKey: apiKey, Model: modelID}
-	client = sdk.NewSDK(&openRouterProvider)
-
-	reader := bufio.NewReader(os.Stdin)
-	var systemMessage sdk.Message
-	if systemInstruction != "" {
-		systemMessage = sdk.Message{Role: "system", Content: systemInstruction}
+	if apiKey == "" {
+		fmt.Println("OPEN_ROUTER_API_KEY not set")
+		return
 	}
+
+	client := ai.NewSDK(&ai.OpenRouterProvider{
+		APIKey: apiKey,
+		Model:  "openrouter/sonoma-sky-alpha",
+	})
+
+	systemMsg := ai.Message{
+		Role:    "system",
+		Content: "your customised system prompt",
+	}
+
+	ctx := context.Background()
+	reader := bufio.NewReader(os.Stdin)
 
 	for {
 		fmt.Print("\nPrompt: ")
-		prompt, _ := reader.ReadString('\n')
-		prompt = strings.TrimSpace(prompt)
-		if prompt == "exit" {
+		input, _ := reader.ReadString('\n')
+		input = strings.TrimSpace(input)
+		if input == "exit" {
 			break
 		}
 
-		var messages []sdk.Message
-		if systemMessage.Content != "" {
-			messages = append(messages, systemMessage)
+		messages := []ai.Message{
+			systemMsg,
+			{Role: "user", Content: input},
 		}
-		messages = append(messages, sdk.Message{Role: "user", Content: prompt})
 
 		fmt.Println("Response:")
 		err := client.StreamComplete(ctx, messages, func(chunk string) error {
