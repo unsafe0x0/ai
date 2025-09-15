@@ -12,13 +12,13 @@ import (
 	"github.com/unsafe0x0/ai/stream"
 )
 
-type OpenRouterProvider struct {
+type GroqCloudProvider struct {
 	APIKey string
 	Model  string
 }
 
-func (p *OpenRouterProvider) callAPI(ctx context.Context, messages []sdk.Message, streamMode bool) (io.ReadCloser, error) {
-	url := "https://openrouter.ai/api/v1/chat/completions"
+func (p *GroqCloudProvider) callAPI(ctx context.Context, messages []sdk.Message, streamMode bool) (io.ReadCloser, error) {
+	url := "https://api.groq.com/openai/v1/chat/completions"
 
 	chatMessages := []map[string]string{}
 	for _, m := range messages {
@@ -39,11 +39,8 @@ func (p *OpenRouterProvider) callAPI(ctx context.Context, messages []sdk.Message
 	if err != nil {
 		return nil, err
 	}
-
 	req.Header.Set("Authorization", "Bearer "+p.APIKey)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("HTTP-Referer", "https://github.com/unsafe0x0/ai")
-	req.Header.Set("X-Title", "ai-sdk")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -53,13 +50,13 @@ func (p *OpenRouterProvider) callAPI(ctx context.Context, messages []sdk.Message
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		return nil, fmt.Errorf("openrouter error: %s", string(b))
+		return nil, fmt.Errorf("groq error: %s", string(b))
 	}
 
 	return resp.Body, nil
 }
 
-func (p *OpenRouterProvider) Complete(ctx context.Context, messages []sdk.Message) (string, error) {
+func (p *GroqCloudProvider) Complete(ctx context.Context, messages []sdk.Message) (string, error) {
 	body, err := p.callAPI(ctx, messages, false)
 	if err != nil {
 		return "", err
@@ -74,7 +71,7 @@ func (p *OpenRouterProvider) Complete(ctx context.Context, messages []sdk.Messag
 	return string(respBytes), nil
 }
 
-func (p *OpenRouterProvider) StreamComplete(ctx context.Context, messages []sdk.Message, onChunk func(string) error) error {
+func (p *GroqCloudProvider) StreamComplete(ctx context.Context, messages []sdk.Message, onChunk func(string) error) error {
 	body, err := p.callAPI(ctx, messages, true)
 	if err != nil {
 		return err

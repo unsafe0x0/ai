@@ -1,4 +1,4 @@
-# AI SDK v1.1.0
+# AI SDK v1.2.0
 
 A simple Go SDK interacting with LLM providers. Supports streaming completions, custom instructions, and easy provider integration.
 
@@ -8,15 +8,20 @@ A simple Go SDK interacting with LLM providers. Supports streaming completions, 
 - Easily switch between providers and models
 - Set custom system instructions for each session
 
+## Providers
+
+- GroqCloud `GroqCloudProvider`
+- Mistral `MistralProvider`
+- OpenRouter `OpenRouterProvider`
+
 ## Project Structure
 
 ```text
 go.mod, go.sum           # Go module files
 LICENSE                  # License file
 readme.md                # Project documentation
+ai.go                    # Main package entrypoint
 
-ai/                      # Main package entrypoint
-│  └── ai.go             # Re-exports SDK and providers for single import
 sdk/                     # Core SDK interfaces and types
 │  ├── message.go        # Message type and roles
 │  └── provider.go       # Provider interface and SDK wrapper
@@ -34,7 +39,7 @@ example/                 # Example programs
 - Add new models or API keys in `.env` and update `main.go` as needed.
 - To support more advanced chat flows, extend the `Message` struct and message array logic.
 
-## How to Use
+## How to Use(Basic Example)
 
 1. **Install as a dependency:**
    Add this SDK to your Go project using:
@@ -77,7 +82,7 @@ example/                 # Example programs
 
       client := ai.NewSDK(&ai.OpenRouterProvider{
    	   APIKey: apiKey,
-   	   Model:  "openrouter/sonoma-sky-alpha",
+   	   Model:  "your_model_here",
       })
 
       systemMsg := ai.Message{

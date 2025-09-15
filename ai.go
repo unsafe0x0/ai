@@ -17,4 +17,6 @@ var (
 
 type (
 	OpenRouterProvider = providers.OpenRouterProvider
+	GroqCloudProvider  = providers.GroqCloudProvider
+	MistralProvider    = providers.MistralProvider
 )

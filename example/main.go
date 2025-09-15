@@ -22,7 +22,7 @@ func main() {
 
 	client := ai.NewSDK(&ai.OpenRouterProvider{
 		APIKey: apiKey,
-		Model:  "openrouter/sonoma-sky-alpha",
+		Model:  "your_model_here",
 	})
 
 	systemMsg := ai.Message{
