@@ -1,4 +1,4 @@
-# AI SDK
+# AI SDK v1.0.0
 
 A simple Go SDK interacting with LLM providers. Supports streaming completions, custom instructions, and easy provider integration.
 
