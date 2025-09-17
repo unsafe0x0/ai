@@ -1,4 +1,4 @@
-# AI SDK v1.3.0
+# AI SDK
 
 A simple Go SDK for interacting with LLM providers. Supports streaming completions, custom instructions, and easy provider integration.
 
@@ -30,6 +30,7 @@ base/
 │  └── provider.go       # Base provider with shared logic
 sdk/                     # Core SDK interfaces and types
 │  ├── message.go        # Message type and roles
+│  ├── options.go       # Options type for request customization
 │  ├── provider.go       # Provider interface and SDK wrapper
 │  └── response.go       # JSON response parser
 providers/               # Provider implementations
