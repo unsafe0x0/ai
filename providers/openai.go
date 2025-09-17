@@ -12,14 +12,14 @@ import (
 	"github.com/unsafe0x0/ai/sdk"
 )
 
-type GroqCloudProvider struct {
+type OpenAiProvider struct {
 	*base.Provider
 	APIKey string
 	Model  string
 }
 
-func NewGroqCloudProvider(apiKey, model string) *GroqCloudProvider {
-	p := &GroqCloudProvider{
+func NewOpenAiProvider(apiKey, model string) *OpenAiProvider {
+	p := &OpenAiProvider{
 		APIKey: apiKey,
 		Model:  model,
 	}
@@ -27,8 +27,8 @@ func NewGroqCloudProvider(apiKey, model string) *GroqCloudProvider {
 	return p
 }
 
-func (p *GroqCloudProvider) CallAPI(ctx context.Context, messages []sdk.Message, streamMode bool, opts *sdk.Options) (io.ReadCloser, error) {
-	url := "https://api.groq.com/openai/v1/chat/completions"
+func (p *OpenAiProvider) CallAPI(ctx context.Context, messages []sdk.Message, streamMode bool, opts *sdk.Options) (io.ReadCloser, error) {
+	url := "https://api.openai.com/v1/chat/completions"
 
 	chatMessages := []map[string]string{}
 	for _, m := range messages {
@@ -57,6 +57,7 @@ func (p *GroqCloudProvider) CallAPI(ctx context.Context, messages []sdk.Message,
 	if err != nil {
 		return nil, err
 	}
+
 	req.Header.Set("Authorization", "Bearer "+p.APIKey)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -68,7 +69,7 @@ func (p *GroqCloudProvider) CallAPI(ctx context.Context, messages []sdk.Message,
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		return nil, fmt.Errorf("groq error: %s", string(b))
+		return nil, fmt.Errorf("openai error: %s", string(b))
 	}
 
 	return resp.Body, nil

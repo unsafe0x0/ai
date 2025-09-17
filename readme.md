@@ -1,18 +1,22 @@
-# AI SDK v1.2.0
+# AI SDK v1.3.0
 
-A simple Go SDK interacting with LLM providers. Supports streaming completions, custom instructions, and easy provider integration.
+A simple Go SDK for interacting with LLM providers. Supports streaming completions, custom instructions, and easy provider integration.
 
 ## Features
 
 - Streamed chat completions from multiple providers
 - Easily switch between providers and models
-- Set custom system instructions for each session
+- Set custom system instructions
 
 ## Providers
 
-- GroqCloud `GroqCloudProvider`
-- Mistral `MistralProvider`
-- OpenRouter `OpenRouterProvider`
+- GroqCloud (`GroqCloudProvider`)
+- Mistral (`MistralProvider`)
+- OpenRouter (`OpenRouterProvider`)
+- OpenAI (`OpenAiProvider`)
+- Perplexity (`PerplexityProvider`)
+- Anthropic (`AnthropicProvider`)
+- Gemini (`GeminiProvider`) currently does not support options.
 
 ## Project Structure
 
@@ -22,129 +26,143 @@ LICENSE                  # License file
 readme.md                # Project documentation
 ai.go                    # Main package entrypoint
 
+base/
+│  └── provider.go       # Base provider with shared logic
 sdk/                     # Core SDK interfaces and types
 │  ├── message.go        # Message type and roles
-│  └── provider.go       # Provider interface and SDK wrapper
+│  ├── provider.go       # Provider interface and SDK wrapper
+│  └── response.go       # JSON response parser
 providers/               # Provider implementations
-│  └── openrouter.go     # OpenRouter provider
+│  ├── openrouter.go     # OpenRouter provider
+│  ├── groqcloud.go      # GroqCloud provider
+│  ├── mistral.go        # Mistral provider
+│  ├── openai.go         # OpenAI provider
+│  ├── perplexity.go     # Perplexity provider
+│  ├── anthropic.go      # Anthropic provider
+│  └── gemini.go         # Gemini provider
 stream/                  # Streaming response parsing
 │  └── stream.go         # Stream chunk parser
 example/                 # Example programs
-   └── main.go           # Example usage of the SDK
+   └── readme.md         # Example usage of the SDK
 ```
 
-## Adding Providers or Features
+## Declaring Providers
 
-- Implement the `Provider` interface in `sdk/sdk.go` for new providers.
-- Add new models or API keys in `.env` and update `main.go` as needed.
-- To support more advanced chat flows, extend the `Message` struct and message array logic.
+To use a provider, you first need to initialize it with your API key and a model name. Here are examples for each supported provider:
 
-## How to Use(Basic Example)
+```go
+// GroqCloud
+client := ai.NewSDK(ai.NewGroqCloudProvider("YOUR_GROQ_API_KEY", "llama3-8b-8192"))
 
-1. **Install as a dependency:**
-   Add this SDK to your Go project using:
+// Mistral
+client := ai.NewSDK(ai.NewMistralProvider("YOUR_MISTRAL_API_KEY", "mistral-small-latest"))
 
-   ```sh
-   go get github.com/unsafe0x0/ai
-   ```
+// OpenRouter
+client := ai.NewSDK(ai.NewOpenRouterProvider("YOUR_OPEN_ROUTER_API_KEY", "openrouter/sonoma-dusk-alpha"))
 
-2. **Set up API keys:**
-   Create a `.env` file in your project root:
+// OpenAI
+client := ai.NewSDK(ai.NewOpenAiProvider("YOUR_OPENAI_API_KEY", "gpt-3.5-turbo"))
 
-   ```
-   OPEN_ROUTER_API_KEY=your_openrouter_key
-   ```
+// Perplexity
+client := ai.NewSDK(ai.NewPerplexityProvider("YOUR_PERPLEXITY_API_KEY", "sonar-pro"))
 
-3. **Basic usage example:**
+// Anthropic
+client := ai.NewSDK(ai.NewAnthropicProvider("YOUR_ANTHROPIC_API_KEY", "claude-3.5"))
 
-   ```go
-   package main
+// Gemini
+client := ai.NewSDK(ai.NewGeminiProvider("YOUR_GEMINI_API_KEY", "gemini-2.5-flash"))
+```
 
-   import (
-      "bufio"
-      "context"
-      "fmt"
-      "os"
-      "strings"
+## Streaming Completions
 
-      "github.com/joho/godotenv"
-      "github.com/unsafe0x0/ai"
-   )
+This SDK supports streaming responses from providers. You can use either `StreamComplete` for simple streaming or `StreamCompleteWithOptions` to include additional parameters.
 
-   func main() {
-      _ = godotenv.Load()
+### Basic Streaming
 
-      apiKey := os.Getenv("OPEN_ROUTER_API_KEY")
-      if apiKey == "" {
-   	   fmt.Println("OPEN_ROUTER_API_KEY not set")
-   	   return
-      }
+The `StreamComplete` method takes a context, a slice of messages, and a callback function to handle each chunk of the response.
 
-      client := ai.NewSDK(&ai.OpenRouterProvider{
-   	   APIKey: apiKey,
-   	   Model:  "your_model_here",
-      })
+```go
+err := client.StreamComplete(ctx, messages, func(chunk string) error {
+	fmt.Print(chunk)
+	return nil
+})
+```
 
-      systemMsg := ai.Message{
-   	   Role:    "system",
-   	   Content: "your customised system prompt",
-      }
+### Streaming with Options
 
-      ctx := context.Background()
-      reader := bufio.NewReader(os.Stdin)
+The `StreamCompleteWithOptions` method allows you to pass additional options to the provider.
 
-      for {
-   	   fmt.Print("\nPrompt: ")
-   	   input, _ := reader.ReadString('\n')
-   	   input = strings.TrimSpace(input)
-   	   if input == "exit" {
-   		   break
-   	   }
+```go
+var opts ai.Options
+maxTokens := 2048
+opts.MaxTokens = &maxTokens
 
-   	   messages := []ai.Message{
-   		   systemMsg,
-   		   {Role: "user", Content: input},
-   	   }
+err := client.StreamCompleteWithOptions(ctx, messages, func(chunk string) error {
+	fmt.Print(chunk)
+	return nil
+}, &opts)
+```
 
-   	   fmt.Println("Response:")
-   	   err := client.StreamComplete(ctx, messages, func(chunk string) error {
-   		   fmt.Print(chunk)
-   		   return nil
-   	   })
-   	   if err != nil {
-   		   fmt.Println("\nError:", err)
-   	   }
-      }
-   }
-   ```
+### Available Options
 
-4. **Streaming responses:**
+The `Options` struct supports the following fields:
 
-   ```go
-   err := client.StreamComplete(ctx, messages, func(chunk string) error {
-   fmt.Print(chunk)
-   return nil
-   })
+- `MaxTokens` (\*int): The maximum number of tokens to generate.
+- `ReasoningEffort` (\*int): A custom parameter to control reasoning effort (e.g., 1 for low, 2 for medium, 3 for high). Note that not all providers support this field.
 
-   ```
+## Non Streaming Completions
 
-5. **Non-streaming responses:**
+For scenarios where you need the full response at once, you can use the non streaming methods.
 
-   ```go
-   resp, err := client.Complete(ctx, messages)
-   if err != nil {
-   fmt.Println("Error:", err)
-   return
-   }
-   fmt.Println(resp)
+### Basic Completion
 
-   ```
+The `Complete` method blocks until the full response is received and returns it as a single string.
 
-6. **Switching providers:**
-   Implement the `Provider` interface for new providers, or use the built-in ones in `providers/`.
+```go
+resp, err := client.Complete(ctx, messages)
+if err != nil {
+    fmt.Println("Error:", err)
+    return
+}
+fmt.Println(resp)
+```
 
-7. **Custom instructions:**
-   Add system or user messages to the `messages` slice to control the conversation context.
+### Completion with Options
+
+Similarly, `CompleteWithOptions` allows you to specify options for a non-streaming request.
+
+```go
+var opts ai.Options
+maxTokens := 1024
+opts.MaxTokens = &maxTokens
+
+resp, err := client.CompleteWithOptions(ctx, messages, &opts)
+if err != nil {
+    fmt.Println("Error:", err)
+    return
+}
+fmt.Println(resp)
+```
+
+## Examples
+
+All code examples for this SDK can be found in the [ai-sdk-examples](https://github.com/unsafe0x0/ai-sdk-examples) repository.
+
+## Contributing
+
+Contributions are welcome!
+
+### Pull Requests
+
+1.  Fork the repository.
+2.  Create a new branch (`git checkout -b feature/your-feature-name`).
+3.  Commit your changes (`git commit -m 'Add some feature'`).
+4.  Push to the branch (`git push origin feature/your-feature-name`).
+5.  Open a pull request.
+
+### Issues
+
+If you find a bug or have a feature request, please open an issue on GitHub.
 
 ---
 

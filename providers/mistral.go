@@ -8,16 +8,26 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/unsafe0x0/ai/base"
 	"github.com/unsafe0x0/ai/sdk"
-	"github.com/unsafe0x0/ai/stream"
 )
 
 type MistralProvider struct {
+	*base.Provider
 	APIKey string
 	Model  string
 }
 
-func (p *MistralProvider) callAPI(ctx context.Context, messages []sdk.Message, streamMode bool) (io.ReadCloser, error) {
+func NewMistralProvider(apiKey, model string) *MistralProvider {
+	p := &MistralProvider{
+		APIKey: apiKey,
+		Model:  model,
+	}
+	p.Provider = &base.Provider{APICaller: p}
+	return p
+}
+
+func (p *MistralProvider) CallAPI(ctx context.Context, messages []sdk.Message, streamMode bool, opts *sdk.Options) (io.ReadCloser, error) {
 	url := "https://api.mistral.ai/v1/chat/completions"
 
 	chatMessages := []map[string]string{}
@@ -32,6 +42,14 @@ func (p *MistralProvider) callAPI(ctx context.Context, messages []sdk.Message, s
 		"model":    p.Model,
 		"messages": chatMessages,
 		"stream":   streamMode,
+	}
+	if opts != nil {
+		if opts.MaxTokens != nil {
+			body["max_tokens"] = *opts.MaxTokens
+		}
+		if opts.ReasoningEffort != nil {
+			body["reasoning_effort"] = *opts.ReasoningEffort
+		}
 	}
 	jsonBody, _ := json.Marshal(body)
 
@@ -54,29 +72,4 @@ func (p *MistralProvider) callAPI(ctx context.Context, messages []sdk.Message, s
 	}
 
 	return resp.Body, nil
-}
-
-func (p *MistralProvider) Complete(ctx context.Context, messages []sdk.Message) (string, error) {
-	body, err := p.callAPI(ctx, messages, false)
-	if err != nil {
-		return "", err
-	}
-	defer body.Close()
-
-	respBytes, err := io.ReadAll(body)
-	if err != nil {
-		return "", err
-	}
-
-	return string(respBytes), nil
-}
-
-func (p *MistralProvider) StreamComplete(ctx context.Context, messages []sdk.Message, onChunk func(string) error) error {
-	body, err := p.callAPI(ctx, messages, true)
-	if err != nil {
-		return err
-	}
-	defer body.Close()
-
-	return stream.StreamChunks(body, onChunk)
 }

@@ -7,7 +7,18 @@ import (
 	"io"
 )
 
-func StreamChunks(body io.Reader, onChunk func(string) error) error {
+// this is only used for Gemini streaming response parsing
+type GeminiChunk struct {
+	Candidates []struct {
+		Content struct {
+			Parts []struct {
+				Text string `json:"text"`
+			} `json:"parts"`
+		} `json:"content"`
+	} `json:"candidates"`
+}
+
+func Stream(body io.Reader, onChunk func(string) error) error {
 	reader := bufio.NewReader(body)
 
 	for {
@@ -24,27 +35,29 @@ func StreamChunks(body io.Reader, onChunk func(string) error) error {
 				return nil
 			}
 
-			var chunkObj map[string]any
-			if err := json.Unmarshal(line, &chunkObj); err != nil {
-				continue
-			}
-			if choices, ok := chunkObj["choices"].([]any); ok && len(choices) > 0 {
-				if choice, ok := choices[0].(map[string]any); ok {
-					if delta, ok := choice["delta"].(map[string]any); ok {
-						if content, ok := delta["content"].(string); ok {
-							if err := onChunk(content); err != nil {
-								return err
-							}
-						}
+			// special handling for Gemini streaming response
+			var chunk GeminiChunk
+			if err := json.Unmarshal(line, &chunk); err == nil {
+				if len(chunk.Candidates) > 0 && len(chunk.Candidates[0].Content.Parts) > 0 {
+					transformedChunk := map[string]interface{}{
+						"choices": []map[string]interface{}{
+							{
+								"delta": map[string]interface{}{
+									"content": chunk.Candidates[0].Content.Parts[0].Text,
+								},
+							},
+						},
 					}
-					if message, ok := choice["message"].(map[string]any); ok {
-						if content, ok := message["content"].(string); ok {
-							if err := onChunk(content); err != nil {
-								return err
-							}
-						}
+					transformedLine, _ := json.Marshal(transformedChunk)
+					if err := onChunk(string(transformedLine)); err != nil {
+						return err
 					}
+					continue
 				}
+			}
+
+			if err := onChunk(string(line)); err != nil {
+				return err
 			}
 		}
 		if err != nil {
