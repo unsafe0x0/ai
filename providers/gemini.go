@@ -36,9 +36,17 @@ type GeminiPart struct {
 	Text string `json:"text"`
 }
 
+type GenerationConfig struct {
+	Temperature     float32  `json:"temperature,omitempty"`
+	MaxOutputTokens int      `json:"maxOutputTokens,omitempty"`
+	CandidateCount  int      `json:"candidateCount,omitempty"`
+	StopSequences   []string `json:"stopSequences,omitempty"`
+}
+
 type GeminiRequest struct {
-	Contents          []GeminiContent `json:"contents"`
-	SystemInstruction *GeminiContent  `json:"system_instruction,omitempty"`
+	Contents          []GeminiContent   `json:"contents"`
+	SystemInstruction *GeminiContent    `json:"system_instruction,omitempty"`
+	GenerationConfig  *GenerationConfig `json:"generationConfig,omitempty"`
 }
 
 func (p *GeminiProvider) CallAPI(ctx context.Context, messages []sdk.Message, streamMode bool, opts *sdk.Options) (io.ReadCloser, error) {
@@ -74,10 +82,20 @@ func (p *GeminiProvider) CallAPI(ctx context.Context, messages []sdk.Message, st
 		Contents:          geminiContents,
 		SystemInstruction: systemInstruction,
 	}
-	if opts != nil {
-		// options support soon
-	}
 
+	if opts != nil {
+		cfg := &GenerationConfig{}
+		if opts.MaxTokens > 0 {
+			cfg.MaxOutputTokens = opts.MaxTokens
+		}
+		if opts.Temperature > 0 {
+			cfg.Temperature = opts.Temperature
+		} else {
+			cfg.Temperature = 0.7
+		}
+
+		reqBody.GenerationConfig = cfg
+	}
 	jsonBody, err := json.Marshal(reqBody)
 	if err != nil {
 		return nil, err

@@ -1,9 +1,8 @@
 # AI SDK
 
-
 <p align="left">
-    <a href="https://github.com/unsafe0x0/ai-sdk/releases/tag/v1.3.0">
-        <img src="https://img.shields.io/badge/v1.3.0-blue.svg" alt="v1.3.0">
+    <a href="https://github.com/unsafe0x0/ai-sdk/releases/tag/v1.3.1">
+        <img src="https://img.shields.io/badge/v1.3.1-blue.svg" alt="v1.3.1">
     </a>
     <img src="https://img.shields.io/badge/Go-00ADD8?logo=go&labelColor=white" alt="Go">
     <br/>
@@ -17,8 +16,6 @@
 </p>
 
 A simple Go SDK for interacting with LLM providers. Supports streaming completions, custom instructions, and easy provider integration.
-
-
 
 ## Features
 
@@ -92,6 +89,15 @@ client := ai.NewSDK(ai.NewAnthropicProvider("YOUR_ANTHROPIC_API_KEY", "claude-3.
 client := ai.NewSDK(ai.NewGeminiProvider("YOUR_GEMINI_API_KEY", "gemini-2.5-flash"))
 ```
 
+## Available Options
+
+The `Options` struct supports the following fields (see `example/main.go` for usage):
+
+- `MaxTokens` (int): The maximum number of tokens to generate. Optional; set to 0 to skip.
+- `ReasoningEffort` (string): Custom reasoning effort (e.g., "low", "medium", "high"). Optional; set to empty string to skip. Not all providers support this field.
+- `Temperature` (float32): Controls randomness of the output (0.0 to 1.0). Optional; set to 0 to skip.
+- `Stream` (bool): Whether to stream the response. Optional; default is false.
+
 ## Streaming Completions
 
 This SDK supports streaming responses from providers. You can use either `StreamComplete` for simple streaming or `StreamCompleteWithOptions` to include additional parameters.
@@ -113,21 +119,16 @@ The `StreamCompleteWithOptions` method allows you to pass additional options to 
 
 ```go
 var opts ai.Options
-maxTokens := 2048
-opts.MaxTokens = &maxTokens
+opts.MaxTokens = 2048 // or 0 to skip
+opts.ReasoningEffort = "medium" // or "low", "high", or "" to skip
+opts.Temperature = 0.7 // or 0 to skip
+opts.Stream = true // or false
 
 err := client.StreamCompleteWithOptions(ctx, messages, func(chunk string) error {
-	fmt.Print(chunk)
-	return nil
+    fmt.Print(chunk)
+    return nil
 }, &opts)
 ```
-
-### Available Options
-
-The `Options` struct supports the following fields:
-
-- `MaxTokens` (\*int): The maximum number of tokens to generate.
-- `ReasoningEffort` (\*int): A custom parameter to control reasoning effort (e.g., 1 for low, 2 for medium, 3 for high). Note that not all providers support this field.
 
 ## Non Streaming Completions
 
@@ -152,8 +153,10 @@ Similarly, `CompleteWithOptions` allows you to specify options for a non-streami
 
 ```go
 var opts ai.Options
-maxTokens := 1024
-opts.MaxTokens = &maxTokens
+opts.MaxTokens = 1024 // or 0 to skip
+opts.ReasoningEffort = "high" // or "low", "medium", or "" to skip
+opts.Temperature = 0.5 // or 0 to skip
+opts.Stream = false // or true
 
 resp, err := client.CompleteWithOptions(ctx, messages, &opts)
 if err != nil {

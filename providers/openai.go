@@ -44,11 +44,14 @@ func (p *OpenAiProvider) CallAPI(ctx context.Context, messages []sdk.Message, st
 		"stream":   streamMode,
 	}
 	if opts != nil {
-		if opts.MaxTokens != nil {
-			body["max_tokens"] = *opts.MaxTokens
+		if opts.MaxTokens != 0 {
+			body["max_tokens"] = opts.MaxTokens
 		}
-		if opts.ReasoningEffort != nil {
-			body["reasoning_effort"] = *opts.ReasoningEffort
+		if opts.ReasoningEffort != "" {
+			body["reasoning_effort"] = opts.ReasoningEffort
+		}
+		if opts.Temperature != 0 {
+			body["temperature"] = opts.Temperature
 		}
 	}
 	jsonBody, _ := json.Marshal(body)
