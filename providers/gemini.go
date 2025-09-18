@@ -74,10 +74,8 @@ func (p *GeminiProvider) CallAPI(ctx context.Context, messages []sdk.Message, st
 		Contents:          geminiContents,
 		SystemInstruction: systemInstruction,
 	}
-	// Add options if present
 	if opts != nil {
-		// Gemini API may not support these, but add to request if needed
-		// You may need to adjust this for actual Gemini API support
+		// options support soon
 	}
 
 	jsonBody, err := json.Marshal(reqBody)
