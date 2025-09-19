@@ -40,3 +40,6 @@ Thumbs.db
 # Environment files
 .env
 .env.*
+
+# Example files
+/example/main.go

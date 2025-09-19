@@ -1,6 +1,7 @@
 package providers
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -27,7 +28,12 @@ func NewAnthropicProvider(apiKey, model string) *AnthropicProvider {
 	return p
 }
 
-func (p *AnthropicProvider) CallAPI(ctx context.Context, messages []sdk.Message, streamMode bool, opts *sdk.Options) (io.ReadCloser, error) {
+func (p *AnthropicProvider) CallAPI(
+	ctx context.Context,
+	messages []sdk.Message,
+	streamMode bool,
+	opts *sdk.Options,
+) (io.ReadCloser, error) {
 	url := "https://api.anthropic.com/v1/messages"
 
 	chatMessages := []map[string]string{}
@@ -49,11 +55,11 @@ func (p *AnthropicProvider) CallAPI(ctx context.Context, messages []sdk.Message,
 		"system":     systemPrompt,
 		"messages":   chatMessages,
 		"stream":     streamMode,
-		"max_tokens": 4096,
+		"max_tokens": 1024,
 	}
 	if opts != nil {
-		if opts.MaxTokens != 0 {
-			body["max_tokens"] = opts.MaxTokens
+		if opts.MaxCompletionTokens != 0 {
+			body["max_tokens"] = opts.MaxCompletionTokens
 		}
 		if opts.ReasoningEffort != "" {
 			body["reasoning_effort"] = opts.ReasoningEffort
@@ -68,7 +74,6 @@ func (p *AnthropicProvider) CallAPI(ctx context.Context, messages []sdk.Message,
 	if err != nil {
 		return nil, err
 	}
-
 	req.Header.Set("x-api-key", p.APIKey)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -76,12 +81,52 @@ func (p *AnthropicProvider) CallAPI(ctx context.Context, messages []sdk.Message,
 	if err != nil {
 		return nil, err
 	}
-
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		return nil, fmt.Errorf("anthropic error: %s", string(b))
 	}
-
 	return resp.Body, nil
+}
+
+func (p *AnthropicProvider) ParseStream(body io.Reader, onChunk func(string) error) error {
+	reader := bufio.NewReader(body)
+
+	for {
+		line, err := reader.ReadBytes('\n')
+		if len(line) > 0 {
+			line = bytes.TrimSpace(line)
+			if len(line) == 0 {
+				continue
+			}
+			if bytes.HasPrefix(line, []byte("data: ")) {
+				line = line[len("data: "):]
+			}
+			if bytes.Equal(line, []byte("[DONE]")) {
+				return nil
+			}
+			var evt struct {
+				Type  string `json:"type"`
+				Delta struct {
+					Text string `json:"text"`
+				} `json:"delta"`
+			}
+
+			if err := json.Unmarshal(line, &evt); err == nil {
+				if evt.Type == "content_block_delta" && evt.Delta.Text != "" {
+					if err := onChunk(evt.Delta.Text); err != nil {
+						return err
+					}
+				}
+				continue
+			}
+		}
+
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+	}
 }

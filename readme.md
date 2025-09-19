@@ -1,8 +1,8 @@
 # AI SDK
 
 <p align="left">
-    <a href="https://github.com/unsafe0x0/ai-sdk/releases/tag/v1.3.1">
-        <img src="https://img.shields.io/badge/v1.3.1-blue.svg" alt="v1.3.1">
+    <a href="https://github.com/unsafe0x0/ai-sdk/releases/tag/v1.3.2">
+        <img src="https://img.shields.io/badge/v1.3.2-blue.svg" alt="v1.3.2">
     </a>
     <img src="https://img.shields.io/badge/Go-00ADD8?logo=go&labelColor=white" alt="Go">
     <br/>
@@ -31,7 +31,7 @@ A simple Go SDK for interacting with LLM providers. Supports streaming completio
 - OpenAI (`OpenAiProvider`)
 - Perplexity (`PerplexityProvider`)
 - Anthropic (`AnthropicProvider`)
-- Gemini (`GeminiProvider`) currently does not support options.
+- Gemini (`GeminiProvider`) currently does not support options other than streaming.
 
 ## Project Structure
 
@@ -45,125 +45,80 @@ base/
 │  └── provider.go       # Base provider with shared logic
 sdk/                     # Core SDK interfaces and types
 │  ├── message.go        # Message type and roles
-│  ├── options.go       # Options type for request customization
-│  ├── provider.go       # Provider interface and SDK wrapper
-│  └── response.go       # JSON response parser
+│  ├── options.go        # Options type for request customization
+│  └── provider.go       # Provider interface and SDK wrapper
 providers/               # Provider implementations
-│  ├── openrouter.go     # OpenRouter provider
+│  ├── anthropic.go      # Anthropic provider
+│  ├── gemini.go         # Gemini provider
 │  ├── groqcloud.go      # GroqCloud provider
 │  ├── mistral.go        # Mistral provider
 │  ├── openai.go         # OpenAI provider
-│  ├── perplexity.go     # Perplexity provider
-│  ├── anthropic.go      # Anthropic provider
-│  └── gemini.go         # Gemini provider
-stream/                  # Streaming response parsing
-│  └── stream.go         # Stream chunk parser
-example/                 # Example programs
-   └── readme.md         # Example usage of the SDK
+│  ├── openrouter.go     # OpenRouter provider
+│  └── perplexity.go     # Perplexity provider
+example/                 # Example usage of the SDK
+│  └── readme.md
 ```
 
 ## Declaring Providers
 
-To use a provider, you first need to initialize it with your API key and a model name. Here are examples for each supported provider:
+To use a provider, initialize it with your API key and a model name using the provided constructor functions:
 
 ```go
+// OpenRouter
+client := ai.OpenRouter("YOUR_OPEN_ROUTER_API_KEY", "openrouter/sonoma-dusk-alpha")
+
 // GroqCloud
-client := ai.NewSDK(ai.NewGroqCloudProvider("YOUR_GROQ_API_KEY", "llama3-8b-8192"))
+client := ai.GroqCloud("YOUR_GROQ_API_KEY", "openai/gpt-oss-20b")
 
 // Mistral
-client := ai.NewSDK(ai.NewMistralProvider("YOUR_MISTRAL_API_KEY", "mistral-small-latest"))
-
-// OpenRouter
-client := ai.NewSDK(ai.NewOpenRouterProvider("YOUR_OPEN_ROUTER_API_KEY", "openrouter/sonoma-dusk-alpha"))
+client := ai.Mistral("YOUR_MISTRAL_API_KEY", "mistral-small-latest")
 
 // OpenAI
-client := ai.NewSDK(ai.NewOpenAiProvider("YOUR_OPENAI_API_KEY", "gpt-3.5-turbo"))
+client := ai.OpenAi("YOUR_OPENAI_API_KEY", "gpt-3.5-turbo")
 
 // Perplexity
-client := ai.NewSDK(ai.NewPerplexityProvider("YOUR_PERPLEXITY_API_KEY", "sonar-pro"))
+client := ai.Perplexity("YOUR_PERPLEXITY_API_KEY", "sonar-pro")
 
 // Anthropic
-client := ai.NewSDK(ai.NewAnthropicProvider("YOUR_ANTHROPIC_API_KEY", "claude-3.5"))
+client := ai.Anthropic("YOUR_ANTHROPIC_API_KEY", "claude-3.5")
 
 // Gemini
-client := ai.NewSDK(ai.NewGeminiProvider("YOUR_GEMINI_API_KEY", "gemini-2.5-flash"))
+client := ai.Gemini("YOUR_GEMINI_API_KEY", "gemini-2.5-flash")
 ```
 
 ## Available Options
 
 The `Options` struct supports the following fields (see `example/main.go` for usage):
 
-- `MaxTokens` (int): The maximum number of tokens to generate. Optional; set to 0 to skip.
+- `MaxCompletionTokens` (int): The maximum number of tokens to generate. Optional; set to 0 to skip.
 - `ReasoningEffort` (string): Custom reasoning effort (e.g., "low", "medium", "high"). Optional; set to empty string to skip. Not all providers support this field.
 - `Temperature` (float32): Controls randomness of the output (0.0 to 1.0). Optional; set to 0 to skip.
 - `Stream` (bool): Whether to stream the response. Optional; default is false.
 
+### Declaring Options
+
+To declare options, create an instance of the `Options` struct and set the desired fields. You can conditionally set fields based on your needs:
+
+```go
+var opts ai.Options
+if maxTokens > 0 {
+    opts.MaxCompletionTokens = maxTokens
+}
+if temp > 0 {
+    opts.Temperature = temp
+}
+opts.Stream = true
+```
+
 ## Streaming Completions
 
-This SDK supports streaming responses from providers. You can use either `StreamComplete` for simple streaming or `StreamCompleteWithOptions` to include additional parameters.
-
-### Basic Streaming
-
-The `StreamComplete` method takes a context, a slice of messages, and a callback function to handle each chunk of the response.
+This SDK supports streaming responses from providers. You can use the Generate method with a callback function to handle streamed chunks:
 
 ```go
-err := client.StreamComplete(ctx, messages, func(chunk string) error {
-	fmt.Print(chunk)
-	return nil
-})
-```
-
-### Streaming with Options
-
-The `StreamCompleteWithOptions` method allows you to pass additional options to the provider.
-
-```go
-var opts ai.Options
-opts.MaxTokens = 2048 // or 0 to skip
-opts.ReasoningEffort = "medium" // or "low", "high", or "" to skip
-opts.Temperature = 0.7 // or 0 to skip
-opts.Stream = true // or false
-
-err := client.StreamCompleteWithOptions(ctx, messages, func(chunk string) error {
+client.Generate(ctx, messages, &opts, func(chunk string) error {
     fmt.Print(chunk)
     return nil
-}, &opts)
-```
-
-## Non Streaming Completions
-
-For scenarios where you need the full response at once, you can use the non streaming methods.
-
-### Basic Completion
-
-The `Complete` method blocks until the full response is received and returns it as a single string.
-
-```go
-resp, err := client.Complete(ctx, messages)
-if err != nil {
-    fmt.Println("Error:", err)
-    return
-}
-fmt.Println(resp)
-```
-
-### Completion with Options
-
-Similarly, `CompleteWithOptions` allows you to specify options for a non-streaming request.
-
-```go
-var opts ai.Options
-opts.MaxTokens = 1024 // or 0 to skip
-opts.ReasoningEffort = "high" // or "low", "medium", or "" to skip
-opts.Temperature = 0.5 // or 0 to skip
-opts.Stream = false // or true
-
-resp, err := client.CompleteWithOptions(ctx, messages, &opts)
-if err != nil {
-    fmt.Println("Error:", err)
-    return
-}
-fmt.Println(resp)
+})
 ```
 
 ## Examples

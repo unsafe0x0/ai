@@ -2,21 +2,31 @@ package base
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"io"
 
 	"github.com/unsafe0x0/ai/sdk"
-	"github.com/unsafe0x0/ai/stream"
 )
 
 type APICaller interface {
 	CallAPI(ctx context.Context, messages []sdk.Message, streamMode bool, opts *sdk.Options) (io.ReadCloser, error)
 }
 
+type StreamParser interface {
+	ParseStream(body io.Reader, onChunk func(string) error) error
+}
+
 type Provider struct {
 	APICaller
 }
 
-func (p *Provider) Generate(ctx context.Context, messages []sdk.Message, opts *sdk.Options, onChunk func(string) error) (string, error) {
+func (p *Provider) Generate(
+	ctx context.Context,
+	messages []sdk.Message,
+	opts *sdk.Options,
+	onChunk func(string) error,
+) (string, error) {
 	streamMode := onChunk != nil
 
 	body, err := p.CallAPI(ctx, messages, streamMode, opts)
@@ -26,22 +36,10 @@ func (p *Provider) Generate(ctx context.Context, messages []sdk.Message, opts *s
 	defer body.Close()
 
 	if streamMode {
-		return "", stream.Stream(body, func(s string) error {
-			var response struct {
-				Choices []struct {
-					Delta struct {
-						Content string `json:"content"`
-					} `json:"delta"`
-				} `json:"choices"`
-			}
-			if err := sdk.ParseResponse([]byte(s), &response); err != nil {
-				return nil
-			}
-			if len(response.Choices) > 0 {
-				return onChunk(response.Choices[0].Delta.Content)
-			}
-			return nil
-		})
+		if parser, ok := p.APICaller.(StreamParser); ok {
+			return "", parser.ParseStream(body, onChunk)
+		}
+		return "", fmt.Errorf("streaming not supported by this provider")
 	}
 
 	respBytes, err := io.ReadAll(body)
@@ -56,7 +54,7 @@ func (p *Provider) Generate(ctx context.Context, messages []sdk.Message, opts *s
 			} `json:"message"`
 		} `json:"choices"`
 	}
-	if err := sdk.ParseResponse(respBytes, &response); err != nil {
+	if err := json.Unmarshal(respBytes, &response); err != nil {
 		return "", err
 	}
 

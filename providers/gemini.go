@@ -1,6 +1,7 @@
 package providers
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -85,15 +86,14 @@ func (p *GeminiProvider) CallAPI(ctx context.Context, messages []sdk.Message, st
 
 	if opts != nil {
 		cfg := &GenerationConfig{}
-		if opts.MaxTokens > 0 {
-			cfg.MaxOutputTokens = opts.MaxTokens
+		if opts.MaxCompletionTokens > 0 {
+			cfg.MaxOutputTokens = opts.MaxCompletionTokens
 		}
 		if opts.Temperature > 0 {
 			cfg.Temperature = opts.Temperature
 		} else {
 			cfg.Temperature = 0.7
 		}
-
 		reqBody.GenerationConfig = cfg
 	}
 	jsonBody, err := json.Marshal(reqBody)
@@ -119,4 +119,49 @@ func (p *GeminiProvider) CallAPI(ctx context.Context, messages []sdk.Message, st
 	}
 
 	return resp.Body, nil
+}
+
+func (p *GeminiProvider) ParseStream(body io.Reader, onChunk func(string) error) error {
+	reader := bufio.NewReader(body)
+
+	for {
+		line, err := reader.ReadBytes('\n')
+		if len(line) > 0 {
+			line = bytes.TrimSpace(line)
+			if len(line) == 0 {
+				continue
+			}
+			if bytes.HasPrefix(line, []byte("data: ")) {
+				line = line[len("data: "):]
+			}
+			if bytes.Equal(line, []byte("[DONE]")) {
+				return nil
+			}
+
+			var chunk struct {
+				Candidates []struct {
+					Content struct {
+						Parts []struct {
+							Text string `json:"text"`
+						} `json:"parts"`
+					} `json:"content"`
+				} `json:"candidates"`
+			}
+
+			if err := json.Unmarshal(line, &chunk); err == nil {
+				if len(chunk.Candidates) > 0 && len(chunk.Candidates[0].Content.Parts) > 0 {
+					if err := onChunk(chunk.Candidates[0].Content.Parts[0].Text); err != nil {
+						return err
+					}
+				}
+			}
+		}
+
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+	}
 }

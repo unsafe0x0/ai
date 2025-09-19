@@ -1,6 +1,7 @@
 package providers
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -44,8 +45,8 @@ func (p *GroqCloudProvider) CallAPI(ctx context.Context, messages []sdk.Message,
 		"stream":   streamMode,
 	}
 	if opts != nil {
-		if opts.MaxTokens != 0 {
-			body["max_tokens"] = opts.MaxTokens
+		if opts.MaxCompletionTokens != 0 {
+			body["max_completion_tokens"] = opts.MaxCompletionTokens
 		}
 		if opts.ReasoningEffort != "" {
 			body["reasoning_effort"] = opts.ReasoningEffort
@@ -78,4 +79,54 @@ func (p *GroqCloudProvider) CallAPI(ctx context.Context, messages []sdk.Message,
 	}
 
 	return resp.Body, nil
+}
+func (p *GroqCloudProvider) ParseStream(body io.Reader, onChunk func(string) error) error {
+	reader := bufio.NewReader(body)
+
+	for {
+		line, err := reader.ReadBytes('\n')
+		if len(line) > 0 {
+			line = bytes.TrimSpace(line)
+			if len(line) == 0 {
+				continue
+			}
+			if bytes.HasPrefix(line, []byte("data: ")) {
+				line = line[len("data: "):]
+			}
+			if bytes.Equal(line, []byte("[DONE]")) {
+				return nil
+			}
+			var chunk struct {
+				Choices []struct {
+					Delta struct {
+						Content string `json:"content"`
+					} `json:"delta"`
+					FinishReason *string `json:"finish_reason"`
+				} `json:"choices"`
+			}
+
+			if err := json.Unmarshal(line, &chunk); err == nil {
+				if len(chunk.Choices) > 0 {
+					d := chunk.Choices[0].Delta.Content
+					if d != "" {
+						if err := onChunk(d); err != nil {
+							return err
+						}
+					}
+					if chunk.Choices[0].FinishReason != nil &&
+						*chunk.Choices[0].FinishReason == "stop" {
+						return nil
+					}
+				}
+				continue
+			}
+		}
+
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+	}
 }

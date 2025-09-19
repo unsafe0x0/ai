@@ -1,6 +1,7 @@
 package providers
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -44,8 +45,8 @@ func (p *PerplexityProvider) CallAPI(ctx context.Context, messages []sdk.Message
 		"stream":   streamMode,
 	}
 	if opts != nil {
-		if opts.MaxTokens != 0 {
-			body["max_tokens"] = opts.MaxTokens
+		if opts.MaxCompletionTokens != 0 {
+			body["max_tokens"] = opts.MaxCompletionTokens
 		}
 		if opts.ReasoningEffort != "" {
 			body["reasoning_effort"] = opts.ReasoningEffort
@@ -54,7 +55,10 @@ func (p *PerplexityProvider) CallAPI(ctx context.Context, messages []sdk.Message
 			body["temperature"] = opts.Temperature
 		}
 	}
-	jsonBody, _ := json.Marshal(body)
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonBody))
 	if err != nil {
@@ -76,4 +80,49 @@ func (p *PerplexityProvider) CallAPI(ctx context.Context, messages []sdk.Message
 	}
 
 	return resp.Body, nil
+}
+
+func (p *PerplexityProvider) ParseStream(body io.Reader, onChunk func(string) error) error {
+	reader := bufio.NewReader(body)
+
+	for {
+		line, err := reader.ReadBytes('\n')
+		if len(line) > 0 {
+			line = bytes.TrimSpace(line)
+			if len(line) == 0 {
+				continue
+			}
+			if bytes.HasPrefix(line, []byte("data: ")) {
+				line = line[len("data: "):]
+			}
+			if bytes.Equal(line, []byte("[DONE]")) {
+				return nil
+			}
+
+			var chunk struct {
+				Choices []struct {
+					Delta struct {
+						Content string `json:"content"`
+					} `json:"delta"`
+				} `json:"choices"`
+			}
+
+			if err := json.Unmarshal(line, &chunk); err == nil {
+				for _, c := range chunk.Choices {
+					if c.Delta.Content != "" {
+						if err := onChunk(c.Delta.Content); err != nil {
+							return err
+						}
+					}
+				}
+			}
+		}
+
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+	}
 }
