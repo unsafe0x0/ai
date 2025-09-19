@@ -12,23 +12,30 @@ type (
 	Options  = sdk.Options
 )
 
-var (
-	NewSDK                = sdk.NewSDK
-	NewOpenRouterProvider = providers.NewOpenRouterProvider
-	NewGroqCloudProvider  = providers.NewGroqCloudProvider
-	NewMistralProvider    = providers.NewMistralProvider
-	NewOpenAiProvider     = providers.NewOpenAiProvider
-	NewPerplexityProvider = providers.NewPerplexityProvider
-	NewAnthropicProvider  = providers.NewAnthropicProvider
-	NewGeminiProvider     = providers.NewGeminiProvider
-)
+func OpenRouter(apiKey, model string) *SDK {
+	return sdk.NewSDK(providers.NewOpenRouterProvider(apiKey, model))
+}
 
-type (
-	OpenRouterProvider = providers.OpenRouterProvider
-	GroqCloudProvider  = providers.GroqCloudProvider
-	MistralProvider    = providers.MistralProvider
-	OpenAiProvider     = providers.OpenAiProvider
-	PerplexityProvider = providers.PerplexityProvider
-	AnthropicProvider  = providers.AnthropicProvider
-	GeminiProvider     = providers.GeminiProvider
-)
+func GroqCloud(apiKey, model string) *SDK {
+	return sdk.NewSDK(providers.NewGroqCloudProvider(apiKey, model))
+}
+
+func Mistral(apiKey, model string) *SDK {
+	return sdk.NewSDK(providers.NewMistralProvider(apiKey, model))
+}
+
+func OpenAi(apiKey, model string) *SDK {
+	return sdk.NewSDK(providers.NewOpenAiProvider(apiKey, model))
+}
+
+func Perplexity(apiKey, model string) *SDK {
+	return sdk.NewSDK(providers.NewPerplexityProvider(apiKey, model))
+}
+
+func Anthropic(apiKey, model string) *SDK {
+	return sdk.NewSDK(providers.NewAnthropicProvider(apiKey, model))
+}
+
+func Gemini(apiKey, model string) *SDK {
+	return sdk.NewSDK(providers.NewGeminiProvider(apiKey, model))
+}
