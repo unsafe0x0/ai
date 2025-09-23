@@ -1,8 +1,8 @@
 # AI SDK
 
 <p align="left">
-    <a href="https://github.com/unsafe0x0/ai-sdk/releases/tag/v1.3.2">
-        <img src="https://img.shields.io/badge/v1.3.2-blue.svg" alt="v1.3.2">
+    <a href="https://github.com/unsafe0x0/ai-sdk/releases/tag/v1.3.3">
+        <img src="https://img.shields.io/badge/v1.3.3-blue.svg" alt="v1.3.3">
     </a>
     <img src="https://img.shields.io/badge/Go-00ADD8?logo=go&labelColor=white" alt="Go">
     <br/>
@@ -13,6 +13,7 @@
     <img src="https://img.shields.io/badge/Perplexity-00B8D4" alt="Perplexity">
     <img src="https://img.shields.io/badge/Anthropic-FF4081" alt="Anthropic">
     <img src="https://img.shields.io/badge/Gemini-7C4DFF" alt="Gemini">
+    <img src="https://img.shields.io/badge/Xai-FFFFFF" alt="Xai">
 </p>
 
 A simple Go SDK for interacting with LLM providers. Supports streaming completions, custom instructions, and easy provider integration.
@@ -32,6 +33,7 @@ A simple Go SDK for interacting with LLM providers. Supports streaming completio
 - Perplexity (`PerplexityProvider`)
 - Anthropic (`AnthropicProvider`)
 - Gemini (`GeminiProvider`) currently does not support options other than streaming.
+- Xai (`XaiProvider`)
 
 ## Project Structure
 
@@ -55,6 +57,7 @@ providers/               # Provider implementations
 │  ├── openai.go         # OpenAI provider
 │  ├── openrouter.go     # OpenRouter provider
 │  └── perplexity.go     # Perplexity provider
+│  └── xai.go            # Xai provider
 example/                 # Example usage of the SDK
 │  └── readme.md
 ```
@@ -84,6 +87,9 @@ client := ai.Anthropic("YOUR_ANTHROPIC_API_KEY", "claude-3.5")
 
 // Gemini
 client := ai.Gemini("YOUR_GEMINI_API_KEY", "gemini-2.5-flash")
+
+// Xai
+client := ai.Xai("YOUR_XAI_API_KEY", "xai-1.5-base")
 ```
 
 ## Available Options

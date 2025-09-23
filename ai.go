@@ -39,3 +39,7 @@ func Anthropic(apiKey, model string) *SDK {
 func Gemini(apiKey, model string) *SDK {
 	return sdk.NewSDK(providers.NewGeminiProvider(apiKey, model))
 }
+
+func Xai(apiKey, model string) *SDK {
+	return sdk.NewSDK(providers.NewXaiProvider(apiKey, model))
+}
