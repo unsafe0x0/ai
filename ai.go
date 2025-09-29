@@ -43,3 +43,7 @@ func Gemini(apiKey, model string) *SDK {
 func Xai(apiKey, model string) *SDK {
 	return sdk.NewSDK(providers.NewXaiProvider(apiKey, model))
 }
+
+func Anannas(apiKey, model string) *SDK {
+	return sdk.NewSDK(providers.NewAnannasProvider(apiKey, model))
+}

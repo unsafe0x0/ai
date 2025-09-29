@@ -1,10 +1,11 @@
 # AI SDK
 
 <p align="left">
-    <a href="https://github.com/unsafe0x0/ai-sdk/releases/tag/v1.3.3">
-        <img src="https://img.shields.io/badge/v1.3.3-blue.svg" alt="v1.3.3">
+    <a href="https://github.com/unsafe0x0/ai-sdk/releases/tag/v1.3.4">
+        <img src="https://img.shields.io/badge/v1.3.4-blue.svg" alt="v1.3.4">
     </a>
     <img src="https://img.shields.io/badge/Go-00ADD8?logo=go&labelColor=white" alt="Go">
+    <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
     <br/>
     <img src="https://img.shields.io/badge/GroqCloud-FF6F00" alt="GroqCloud">
     <img src="https://img.shields.io/badge/Mistral-1976D2" alt="Mistral">
@@ -14,6 +15,7 @@
     <img src="https://img.shields.io/badge/Anthropic-FF4081" alt="Anthropic">
     <img src="https://img.shields.io/badge/Gemini-7C4DFF" alt="Gemini">
     <img src="https://img.shields.io/badge/Xai-FFFFFF" alt="Xai">
+    <img src="https://img.shields.io/badge/Anannas-FF6F00" alt="Anannas">
 </p>
 
 A simple Go SDK for interacting with LLM providers. Supports streaming completions, custom instructions, and easy provider integration.
@@ -34,6 +36,7 @@ A simple Go SDK for interacting with LLM providers. Supports streaming completio
 - Anthropic (`AnthropicProvider`)
 - Gemini (`GeminiProvider`) currently does not support options other than streaming.
 - Xai (`XaiProvider`)
+- Anannas (`AnannasProvider`)
 
 ## Project Structure
 
@@ -50,6 +53,7 @@ sdk/                     # Core SDK interfaces and types
 │  ├── options.go        # Options type for request customization
 │  └── provider.go       # Provider interface and SDK wrapper
 providers/               # Provider implementations
+│  ├── anannas.go        # Anannas provider
 │  ├── anthropic.go      # Anthropic provider
 │  ├── gemini.go         # Gemini provider
 │  ├── groqcloud.go      # GroqCloud provider
@@ -90,6 +94,9 @@ client := ai.Gemini("YOUR_GEMINI_API_KEY", "gemini-2.5-flash")
 
 // Xai
 client := ai.Xai("YOUR_XAI_API_KEY", "xai-1.5-base")
+
+// Anannas
+client := ai.Anannas("YOUR_ANANNAS_API_KEY", "mistralai/mistral-small-3.2-24b-instruct:free")
 ```
 
 ## Available Options
