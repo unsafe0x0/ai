@@ -1,21 +1,18 @@
 # AI SDK
 
 <p align="left">
-    <a href="https://github.com/unsafe0x0/ai-sdk/releases/tag/v1.3.4">
-        <img src="https://img.shields.io/badge/v1.3.4-blue.svg" alt="v1.3.4">
+    <a href="https://github.com/unsafe0x0/ai-sdk/releases/tag/v1.3.5">
+        <img src="https://img.shields.io/badge/v1.3.5-blue.svg" alt="v1.3.5">
     </a>
     <img src="https://img.shields.io/badge/Go-00ADD8?logo=go&labelColor=white" alt="Go">
     <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
+    <a href="https://github.com/unsafe0x0/ai">
+        <img src="https://img.shields.io/github/stars/unsafe0x0/ai?style=social" alt="GitHub stars">
+        <img src="https://img.shields.io/github/forks/unsafe0x0/ai?style=social" alt="GitHub forks">
+        <img src="https://img.shields.io/github/issues/unsafe0x0/ai" alt="GitHub issues">
+        <img src="https://img.shields.io/github/last-commit/unsafe0x0/ai" alt="Last commit">
+    </a>
     <br/>
-    <img src="https://img.shields.io/badge/GroqCloud-FF6F00" alt="GroqCloud">
-    <img src="https://img.shields.io/badge/Mistral-1976D2" alt="Mistral">
-    <img src="https://img.shields.io/badge/OpenRouter-43A047" alt="OpenRouter">
-    <img src="https://img.shields.io/badge/OpenAI-6E4AFF" alt="OpenAI">
-    <img src="https://img.shields.io/badge/Perplexity-00B8D4" alt="Perplexity">
-    <img src="https://img.shields.io/badge/Anthropic-FF4081" alt="Anthropic">
-    <img src="https://img.shields.io/badge/Gemini-7C4DFF" alt="Gemini">
-    <img src="https://img.shields.io/badge/Xai-FFFFFF" alt="Xai">
-    <img src="https://img.shields.io/badge/Anannas-FF6F00" alt="Anannas">
 </p>
 
 A simple Go SDK for interacting with LLM providers. Supports streaming completions, custom instructions, and easy provider integration.
@@ -27,6 +24,19 @@ A simple Go SDK for interacting with LLM providers. Supports streaming completio
 - Set custom system instructions
 
 ## Providers
+
+   <div align="left">
+    <img src="https://img.shields.io/badge/GroqCloud-FF6F00" alt="GroqCloud">
+    <img src="https://img.shields.io/badge/Mistral-1976D2" alt="Mistral">
+    <img src="https://img.shields.io/badge/OpenRouter-43A047" alt="OpenRouter">
+    <img src="https://img.shields.io/badge/OpenAI-6E4AFF" alt="OpenAI">
+    <img src="https://img.shields.io/badge/Perplexity-00B8D4" alt="Perplexity">
+    <img src="https://img.shields.io/badge/Anthropic-FF4081" alt="Anthropic">
+    <img src="https://img.shields.io/badge/Gemini-7C4DFF" alt="Gemini">
+    <img src="https://img.shields.io/badge/Xai-FFFFFF" alt="Xai">
+    <img src="https://img.shields.io/badge/Anannas-FF6F00" alt="Anannas">
+    <br/>
+    </div>
 
 - GroqCloud (`GroqCloudProvider`)
 - Mistral (`MistralProvider`)
