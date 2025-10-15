@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -16,13 +15,11 @@ import (
 type AnannasProvider struct {
 	*base.Provider
 	APIKey string
-	Model  string
 }
 
-func NewAnannasProvider(apiKey, model string) *AnannasProvider {
+func NewAnannasProvider(apiKey string) *AnannasProvider {
 	p := &AnannasProvider{
 		APIKey: apiKey,
-		Model:  model,
 	}
 	p.Provider = &base.Provider{APICaller: p}
 	return p
@@ -40,11 +37,15 @@ func (p *AnannasProvider) CallAPI(ctx context.Context, messages []sdk.Message, s
 	}
 
 	body := map[string]interface{}{
-		"model":    p.Model,
 		"messages": chatMessages,
 		"stream":   streamMode,
 	}
 	if opts != nil {
+
+		if opts.Model != "" {
+			body["model"] = opts.Model
+		}
+
 		if opts.MaxCompletionTokens != 0 {
 			body["max_tokens"] = opts.MaxCompletionTokens
 		}
@@ -78,7 +79,11 @@ func (p *AnannasProvider) CallAPI(ctx context.Context, messages []sdk.Message, s
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		return nil, fmt.Errorf("anannas error: %s", string(b))
+		return nil, &sdk.APIError{
+			StatusCode: resp.StatusCode,
+			Message:    string(b),
+			Body:       b,
+		}
 	}
 
 	return resp.Body, nil

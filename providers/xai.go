@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -16,13 +15,11 @@ import (
 type XaiProvider struct {
 	*base.Provider
 	APIKey string
-	Model  string
 }
 
-func NewXaiProvider(apiKey, model string) *XaiProvider {
+func NewXaiProvider(apiKey string) *XaiProvider {
 	p := &XaiProvider{
 		APIKey: apiKey,
-		Model:  model,
 	}
 	p.Provider = &base.Provider{APICaller: p}
 	return p
@@ -40,11 +37,13 @@ func (p *XaiProvider) CallAPI(ctx context.Context, messages []sdk.Message, strea
 	}
 
 	body := map[string]interface{}{
-		"model":    p.Model,
 		"messages": chatMessages,
 		"stream":   streamMode,
 	}
 	if opts != nil {
+		if opts.Model != "" {
+			body["model"] = opts.Model
+		}
 		if opts.MaxCompletionTokens != 0 {
 			body["max_tokens"] = opts.MaxCompletionTokens
 		}
@@ -76,7 +75,11 @@ func (p *XaiProvider) CallAPI(ctx context.Context, messages []sdk.Message, strea
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		return nil, fmt.Errorf("xai error: %s", string(b))
+		return nil, &sdk.APIError{
+			StatusCode: resp.StatusCode,
+			Message:    string(b),
+			Body:       b,
+		}
 	}
 
 	return resp.Body, nil

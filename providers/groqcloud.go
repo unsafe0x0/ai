@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -16,13 +15,11 @@ import (
 type GroqCloudProvider struct {
 	*base.Provider
 	APIKey string
-	Model  string
 }
 
-func NewGroqCloudProvider(apiKey, model string) *GroqCloudProvider {
+func NewGroqCloudProvider(apiKey string) *GroqCloudProvider {
 	p := &GroqCloudProvider{
 		APIKey: apiKey,
-		Model:  model,
 	}
 	p.Provider = &base.Provider{APICaller: p}
 	return p
@@ -40,11 +37,14 @@ func (p *GroqCloudProvider) CallAPI(ctx context.Context, messages []sdk.Message,
 	}
 
 	body := map[string]interface{}{
-		"model":    p.Model,
 		"messages": chatMessages,
 		"stream":   streamMode,
 	}
 	if opts != nil {
+
+		if opts.Model != "" {
+			body["model"] = opts.Model
+		}
 		if opts.MaxCompletionTokens != 0 {
 			body["max_completion_tokens"] = opts.MaxCompletionTokens
 		}
@@ -54,11 +54,11 @@ func (p *GroqCloudProvider) CallAPI(ctx context.Context, messages []sdk.Message,
 		if opts.Temperature != 0 {
 			body["temperature"] = opts.Temperature
 		}
-		if opts.Stream {
-			body["stream"] = opts.Stream
-		}
 	}
-	jsonBody, _ := json.Marshal(body)
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonBody))
 	if err != nil {
@@ -75,7 +75,11 @@ func (p *GroqCloudProvider) CallAPI(ctx context.Context, messages []sdk.Message,
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		return nil, fmt.Errorf("groq error: %s", string(b))
+		return nil, &sdk.APIError{
+			StatusCode: resp.StatusCode,
+			Message:    string(b),
+			Body:       b,
+		}
 	}
 
 	return resp.Body, nil

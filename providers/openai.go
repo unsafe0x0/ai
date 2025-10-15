@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -16,13 +15,11 @@ import (
 type OpenAiProvider struct {
 	*base.Provider
 	APIKey string
-	Model  string
 }
 
-func NewOpenAiProvider(apiKey, model string) *OpenAiProvider {
+func NewOpenAiProvider(apiKey string) *OpenAiProvider {
 	p := &OpenAiProvider{
 		APIKey: apiKey,
-		Model:  model,
 	}
 	p.Provider = &base.Provider{APICaller: p}
 	return p
@@ -40,11 +37,13 @@ func (p *OpenAiProvider) CallAPI(ctx context.Context, messages []sdk.Message, st
 	}
 
 	body := map[string]interface{}{
-		"model":    p.Model,
 		"messages": chatMessages,
 		"stream":   streamMode,
 	}
 	if opts != nil {
+		if opts.Model != "" {
+			body["model"] = opts.Model
+		}
 		if opts.MaxCompletionTokens != 0 {
 			body["max_completion_tokens"] = opts.MaxCompletionTokens
 		}
@@ -73,7 +72,11 @@ func (p *OpenAiProvider) CallAPI(ctx context.Context, messages []sdk.Message, st
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		return nil, fmt.Errorf("openai error: %s", string(b))
+		return nil, &sdk.APIError{
+			StatusCode: resp.StatusCode,
+			Message:    string(b),
+			Body:       b,
+		}
 	}
 
 	return resp.Body, nil

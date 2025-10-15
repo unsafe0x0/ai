@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -16,13 +15,11 @@ import (
 type PerplexityProvider struct {
 	*base.Provider
 	APIKey string
-	Model  string
 }
 
-func NewPerplexityProvider(apiKey, model string) *PerplexityProvider {
+func NewPerplexityProvider(apiKey string) *PerplexityProvider {
 	p := &PerplexityProvider{
 		APIKey: apiKey,
-		Model:  model,
 	}
 	p.Provider = &base.Provider{APICaller: p}
 	return p
@@ -40,11 +37,13 @@ func (p *PerplexityProvider) CallAPI(ctx context.Context, messages []sdk.Message
 	}
 
 	body := map[string]interface{}{
-		"model":    p.Model,
 		"messages": chatMessages,
 		"stream":   streamMode,
 	}
 	if opts != nil {
+		if opts.Model != "" {
+			body["model"] = opts.Model
+		}
 		if opts.MaxCompletionTokens != 0 {
 			body["max_tokens"] = opts.MaxCompletionTokens
 		}
@@ -76,7 +75,11 @@ func (p *PerplexityProvider) CallAPI(ctx context.Context, messages []sdk.Message
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		return nil, fmt.Errorf("perplexity error: %s", string(b))
+		return nil, &sdk.APIError{
+			StatusCode: resp.StatusCode,
+			Message:    string(b),
+			Body:       b,
+		}
 	}
 
 	return resp.Body, nil

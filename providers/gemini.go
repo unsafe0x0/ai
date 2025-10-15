@@ -16,13 +16,11 @@ import (
 type GeminiProvider struct {
 	*base.Provider
 	APIKey string
-	Model  string
 }
 
-func NewGeminiProvider(apiKey, model string) *GeminiProvider {
+func NewGeminiProvider(apiKey string) *GeminiProvider {
 	p := &GeminiProvider{
 		APIKey: apiKey,
-		Model:  model,
 	}
 	p.Provider = &base.Provider{APICaller: p}
 	return p
@@ -51,11 +49,17 @@ type GeminiRequest struct {
 }
 
 func (p *GeminiProvider) CallAPI(ctx context.Context, messages []sdk.Message, streamMode bool, opts *sdk.Options) (io.ReadCloser, error) {
+
+	var model string
+	if opts != nil && opts.Model != "" {
+		model = opts.Model
+	}
+
 	var url string
 	if streamMode {
-		url = fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:streamGenerateContent?alt=sse&key=%s", p.Model, p.APIKey)
+		url = fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:streamGenerateContent?alt=sse&key=%s", model, p.APIKey)
 	} else {
-		url = fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s", p.Model, p.APIKey)
+		url = fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s", model, p.APIKey)
 	}
 
 	var systemInstruction *GeminiContent
@@ -115,7 +119,11 @@ func (p *GeminiProvider) CallAPI(ctx context.Context, messages []sdk.Message, st
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		return nil, fmt.Errorf("gemini error: %s", string(b))
+		return nil, &sdk.APIError{
+			StatusCode: resp.StatusCode,
+			Message:    string(b),
+			Body:       b,
+		}
 	}
 
 	return resp.Body, nil

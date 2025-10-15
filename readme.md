@@ -1,8 +1,8 @@
 # AI SDK
 
 <p align="left">
-    <a href="https://github.com/unsafe0x0/ai-sdk/releases/tag/v1.3.5">
-        <img src="https://img.shields.io/badge/v1.3.5-blue.svg" alt="v1.3.5">
+    <a href="https://github.com/unsafe0x0/ai-sdk/releases/tag/v2.0.0">
+        <img src="https://img.shields.io/badge/v2.0.0-blue.svg" alt="v2.0.0">
     </a>
     <img src="https://img.shields.io/badge/Go-00ADD8?logo=go&labelColor=white" alt="Go">
     <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
@@ -19,9 +19,9 @@ A simple Go SDK for interacting with LLM providers. Supports streaming completio
 
 ## Features
 
-- Streamed chat completions from multiple providers
+- Chat completions (non-streaming and streaming)
 - Easily switch between providers and models
-- Set custom system instructions
+- Options for customizing requests (model, system prompt, max tokens, temperature, reasoning effort)
 
 ## Providers
 
@@ -38,20 +38,22 @@ A simple Go SDK for interacting with LLM providers. Supports streaming completio
     <br/>
     </div>
 
-- GroqCloud (`GroqCloudProvider`)
-- Mistral (`MistralProvider`)
-- OpenRouter (`OpenRouterProvider`)
-- OpenAI (`OpenAiProvider`)
-- Perplexity (`PerplexityProvider`)
-- Anthropic (`AnthropicProvider`)
-- Gemini (`GeminiProvider`) currently does not support options other than streaming.
-- Xai (`XaiProvider`)
-- Anannas (`AnannasProvider`)
+---
+
+- GroqCloud (`GroqCloud`)
+- Mistral (`Mistral`)
+- OpenRouter (`OpenRouter`)
+- OpenAI (`OpenAi`)
+- Perplexity (`Perplexity`)
+- Anthropic (`Anthropic`)
+- Gemini (`Gemini`)
+- Xai (`Xai`)
+- Anannas (`Anannas`)
 
 ## Project Structure
 
 ```text
-go.mod, go.sum           # Go module files
+go.mod                   # Go module file
 LICENSE                  # License file
 readme.md                # Project documentation
 ai.go                    # Main package entrypoint
@@ -59,6 +61,7 @@ ai.go                    # Main package entrypoint
 base/
 │  └── provider.go       # Base provider with shared logic
 sdk/                     # Core SDK interfaces and types
+│  ├── errors.go         # API errors handling
 │  ├── message.go        # Message type and roles
 │  ├── options.go        # Options type for request customization
 │  └── provider.go       # Provider interface and SDK wrapper
@@ -76,72 +79,120 @@ example/                 # Example usage of the SDK
 │  └── readme.md
 ```
 
+## Available Options
+
+The `Options` struct supports the following fields (see `example/readme.md` for usage):
+
+- `Model` (string): The model to use (e.g., "gpt-4o", "gemini-1.5").
+- `SystemPrompt` (string): Custom system prompt to guide the AI's behavior.
+- `MaxCompletionTokens` (int): The maximum number of tokens to generate.
+- `ReasoningEffort` (string): Custom reasoning effort (e.g., "low", "medium", "high").
+- `Temperature` (float32): Controls randomness of the output (0.0 to 1.0).
+
+## Getting Started
+
+Import the SDK in your Go project:
+
+```go
+import "github.com/unsafe0x0/ai"
+```
+
 ## Declaring Providers
 
-To use a provider, initialize it with your API key and a model name using the provided constructor functions:
+To use a provider, initialize it with your API key using the provided constructor functions:
 
 ```go
 // OpenRouter
-client := ai.OpenRouter("YOUR_OPEN_ROUTER_API_KEY", "openrouter/sonoma-dusk-alpha")
+client := ai.OpenRouter("YOUR_OPEN_ROUTER_API_KEY")
 
 // GroqCloud
-client := ai.GroqCloud("YOUR_GROQ_API_KEY", "openai/gpt-oss-20b")
+client := ai.GroqCloud("YOUR_GROQ_API_KEY")
 
 // Mistral
-client := ai.Mistral("YOUR_MISTRAL_API_KEY", "mistral-small-latest")
+client := ai.Mistral("YOUR_MISTRAL_API_KEY")
 
 // OpenAI
-client := ai.OpenAi("YOUR_OPENAI_API_KEY", "gpt-3.5-turbo")
+client := ai.OpenAi("YOUR_OPENAI_API_KEY")
 
 // Perplexity
-client := ai.Perplexity("YOUR_PERPLEXITY_API_KEY", "sonar-pro")
+client := ai.Perplexity("YOUR_PERPLEXITY_API_KEY")
 
 // Anthropic
-client := ai.Anthropic("YOUR_ANTHROPIC_API_KEY", "claude-3.5")
+client := ai.Anthropic("YOUR_ANTHROPIC_API_KEY")
 
 // Gemini
-client := ai.Gemini("YOUR_GEMINI_API_KEY", "gemini-2.5-flash")
+client := ai.Gemini("YOUR_GEMINI_API_KEY")
 
 // Xai
-client := ai.Xai("YOUR_XAI_API_KEY", "xai-1.5-base")
+client := ai.Xai("YOUR_XAI_API_KEY")
 
 // Anannas
-client := ai.Anannas("YOUR_ANANNAS_API_KEY", "mistralai/mistral-small-3.2-24b-instruct:free")
+client := ai.Anannas("YOUR_ANANNAS_API_KEY")
 ```
 
-## Available Options
+### Messages and Options
 
-The `Options` struct supports the following fields (see `example/main.go` for usage):
+Messages are simple role/content pairs:
 
-- `MaxCompletionTokens` (int): The maximum number of tokens to generate. Optional; set to 0 to skip.
-- `ReasoningEffort` (string): Custom reasoning effort (e.g., "low", "medium", "high"). Optional; set to empty string to skip. Not all providers support this field.
-- `Temperature` (float32): Controls randomness of the output (0.0 to 1.0). Optional; set to 0 to skip.
-- `Stream` (bool): Whether to stream the response. Optional; default is false.
+```go
+messages := []ai.Message{
+    {Role: "user", Content: "Hello, how are you?"},
+}
+```
 
 ### Declaring Options
 
 To declare options, create an instance of the `Options` struct and set the desired fields. You can conditionally set fields based on your needs:
 
 ```go
+model := "gpt-4o" // use your desired model
+systemPrompt := "You are a helpful assistant." // use your custom system prompt
+maxTokens := 1000 // use according to your needs
+reasoningEffort := "medium" // use "low", "medium", or "high"
+temp := 0.7 // use a temperature between 0.0 and 1.0
+
 var opts ai.Options
+if model != "" {
+    opts.Model = model
+}
+if systemPrompt != "" {
+        opts.SystemPrompt = systemPrompt
+}
 if maxTokens > 0 {
     opts.MaxCompletionTokens = maxTokens
+}
+if reasoningEffort != "" {
+    opts.ReasoningEffort = reasoningEffort
 }
 if temp > 0 {
     opts.Temperature = temp
 }
-opts.Stream = true
 ```
 
 ## Streaming Completions
 
-This SDK supports streaming responses from providers. You can use the Generate method with a callback function to handle streamed chunks:
+This SDK supports both non-streaming and streaming responses.
+
+Non-streaming:
 
 ```go
-client.Generate(ctx, messages, &opts, func(chunk string) error {
+resp, err := client.Generate(ctx, messages, &opts)
+if err != nil {
+    // handle error
+}
+fmt.Println(resp)
+```
+
+Streaming (callback must not be nil):
+
+```go
+_, err := client.GenerateStream(ctx, messages, &opts, func(chunk string) error {
     fmt.Print(chunk)
     return nil
 })
+if err != nil {
+    // handle error
+}
 ```
 
 ## Examples
@@ -155,9 +206,9 @@ Contributions are welcome!
 ### Pull Requests
 
 1.  Fork the repository.
-2.  Create a new branch (`git checkout -b feature/your-feature-name`).
-3.  Commit your changes (`git commit -m 'Add some feature'`).
-4.  Push to the branch (`git push origin feature/your-feature-name`).
+2.  Create a new branch.
+3.  Commit your changes.
+4.  Push to the branch.
 5.  Open a pull request.
 
 ### Issues

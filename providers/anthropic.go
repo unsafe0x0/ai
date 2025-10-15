@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -16,13 +15,11 @@ import (
 type AnthropicProvider struct {
 	*base.Provider
 	APIKey string
-	Model  string
 }
 
-func NewAnthropicProvider(apiKey, model string) *AnthropicProvider {
+func NewAnthropicProvider(apiKey string) *AnthropicProvider {
 	p := &AnthropicProvider{
 		APIKey: apiKey,
-		Model:  model,
 	}
 	p.Provider = &base.Provider{APICaller: p}
 	return p
@@ -51,13 +48,15 @@ func (p *AnthropicProvider) CallAPI(
 	}
 
 	body := map[string]interface{}{
-		"model":      p.Model,
 		"system":     systemPrompt,
 		"messages":   chatMessages,
 		"stream":     streamMode,
 		"max_tokens": 1024,
 	}
 	if opts != nil {
+		if opts.Model != "" {
+			body["model"] = opts.Model
+		}
 		if opts.MaxCompletionTokens != 0 {
 			body["max_tokens"] = opts.MaxCompletionTokens
 		}
@@ -68,7 +67,10 @@ func (p *AnthropicProvider) CallAPI(
 			body["temperature"] = opts.Temperature
 		}
 	}
-	jsonBody, _ := json.Marshal(body)
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonBody))
 	if err != nil {
@@ -84,7 +86,11 @@ func (p *AnthropicProvider) CallAPI(
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		return nil, fmt.Errorf("anthropic error: %s", string(b))
+		return nil, &sdk.APIError{
+			StatusCode: resp.StatusCode,
+			Message:    string(b),
+			Body:       b,
+		}
 	}
 	return resp.Body, nil
 }
