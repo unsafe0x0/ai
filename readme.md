@@ -59,7 +59,8 @@ readme.md                # Project documentation
 ai.go                    # Main package entrypoint
 
 base/
-│  └── provider.go       # Base provider with shared logic
+│  └── base.go           # Base provider
+│  └── shared.go         # Shared logic
 sdk/                     # Core SDK interfaces and types
 │  ├── errors.go         # API errors handling
 │  ├── message.go        # Message type and roles
@@ -78,16 +79,6 @@ providers/               # Provider implementations
 example/                 # Example usage of the SDK
 │  └── readme.md
 ```
-
-## Available Options
-
-The `Options` struct supports the following fields (see `example/readme.md` for usage):
-
-- `Model` (string): The model to use (e.g., "gpt-4o", "gemini-1.5").
-- `SystemPrompt` (string): Custom system prompt to guide the AI's behavior.
-- `MaxCompletionTokens` (int): The maximum number of tokens to generate.
-- `ReasoningEffort` (string): Custom reasoning effort (e.g., "low", "medium", "high").
-- `Temperature` (float32): Controls randomness of the output (0.0 to 1.0).
 
 ## Getting Started
 
@@ -130,70 +121,42 @@ client := ai.Xai("YOUR_XAI_API_KEY")
 client := ai.Anannas("YOUR_ANANNAS_API_KEY")
 ```
 
-### Messages and Options
+## Usage
 
-Messages are simple role/content pairs:
-
-```go
-messages := []ai.Message{
-    {Role: "user", Content: "Hello, how are you?"},
-}
-```
-
-### Declaring Options
-
-To declare options, create an instance of the `Options` struct and set the desired fields. You can conditionally set fields based on your needs:
+Create a `CompletionRequest` to specify messages, model, and other options, then call `ChatCompletion()`:
 
 ```go
-model := "gpt-4o" // use your desired model
-systemPrompt := "You are a helpful assistant." // use your custom system prompt
-maxTokens := 1000 // use according to your needs
-reasoningEffort := "medium" // use "low", "medium", or "high"
-temp := 0.7 // use a temperature between 0.0 and 1.0
-
-var opts ai.Options
-if model != "" {
-    opts.Model = model
-}
-if systemPrompt != "" {
-        opts.SystemPrompt = systemPrompt
-}
-if maxTokens > 0 {
-    opts.MaxCompletionTokens = maxTokens
-}
-if reasoningEffort != "" {
-    opts.ReasoningEffort = reasoningEffort
-}
-if temp > 0 {
-    opts.Temperature = temp
-}
-```
-
-## Streaming Completions
-
-This SDK supports both non-streaming and streaming responses.
-
-Non-streaming:
-
-```go
-resp, err := client.Generate(ctx, messages, &opts)
-if err != nil {
-    // handle error
-}
-fmt.Println(resp)
-```
-
-Streaming (callback must not be nil):
-
-```go
-_, err := client.GenerateStream(ctx, messages, &opts, func(chunk string) error {
-    fmt.Print(chunk)
-    return nil
+resp := client.ChatCompletion(ctx, &ai.CompletionRequest{
+	Messages: []ai.Message{
+		{Role: "user", Content: "Your message here"},
+	},
+	Model:        "llama3-8b-8192",
+	SystemPrompt: "You are a helpful assistant.",
+	MaxTokens:    150,
+	Temperature:  0.7,
+	Stream:       true,
 })
-if err != nil {
-    // handle error
+
+if resp.Error != nil {
+	panic(resp.Error)
+}
+
+if resp.Stream != nil {
+	defer resp.Stream.Close()
+	io.Copy(os.Stdout, resp.Stream)
+} else {
+	fmt.Println(resp.Content)
 }
 ```
+
+### CompletionRequest Options
+
+- `Model` (string): The model to use (e.g., "gpt-4o", "llama3-8b-8192").
+- `SystemPrompt` (string): Custom system prompt to guide the AI's behavior.
+- `MaxTokens` (int): The maximum number of tokens to generate.
+- `ReasoningEffort` (string): Custom reasoning effort (e.g., "low", "medium", "high").
+- `Temperature` (float32): Controls randomness of the output (0.0 to 1.0).
+- `Stream` (bool): Set to `true` for a streaming response, `false` for a single response.
 
 ## Examples
 

@@ -26,26 +26,51 @@ func NewGeminiProvider(apiKey string) *GeminiProvider {
 	return p
 }
 
+type GeminiPart struct {
+	Text string `json:"text"`
+}
+
 type GeminiContent struct {
 	Parts []GeminiPart `json:"parts"`
 	Role  string       `json:"role,omitempty"`
 }
 
-type GeminiPart struct {
-	Text string `json:"text"`
-}
-
 type GenerationConfig struct {
-	Temperature     float32  `json:"temperature,omitempty"`
-	MaxOutputTokens int      `json:"maxOutputTokens,omitempty"`
-	CandidateCount  int      `json:"candidateCount,omitempty"`
-	StopSequences   []string `json:"stopSequences,omitempty"`
+	Temperature     float32 `json:"temperature,omitempty"`
+	MaxOutputTokens int     `json:"maxOutputTokens,omitempty"`
 }
 
 type GeminiRequest struct {
 	Contents          []GeminiContent   `json:"contents"`
 	SystemInstruction *GeminiContent    `json:"system_instruction,omitempty"`
-	GenerationConfig  *GenerationConfig `json:"generationConfig,omitempty"`
+	GenerationConfig  *GenerationConfig `json:"generation_config,omitempty"`
+}
+
+type Candidate struct {
+	Content      GeminiContent `json:"content"`
+	FinishReason string        `json:"finishReason"`
+}
+
+type GeminiResponseChunk struct {
+	Candidates []Candidate `json:"candidates"`
+}
+
+type PromptFeedback struct {
+	BlockReason string `json:"blockReason"`
+}
+
+type GeminiResponse struct {
+	Candidates     []Candidate     `json:"candidates"`
+	PromptFeedback *PromptFeedback `json:"promptFeedback,omitempty"`
+}
+
+type ContentBlockedError struct {
+	Reason string
+	Body   []byte
+}
+
+func (e *ContentBlockedError) Error() string {
+	return fmt.Sprintf("content blocked by safety filters. Finish Reason: %s. Response Body: %s", e.Reason, string(e.Body))
 }
 
 func (p *GeminiProvider) CallAPI(ctx context.Context, messages []sdk.Message, streamMode bool, opts *sdk.Options) (io.ReadCloser, error) {
@@ -90,16 +115,19 @@ func (p *GeminiProvider) CallAPI(ctx context.Context, messages []sdk.Message, st
 
 	if opts != nil {
 		cfg := &GenerationConfig{}
+		cfg.Temperature = 0.7
+
+		if opts.Temperature > 0 {
+			cfg.Temperature = opts.Temperature
+		}
+
 		if opts.MaxCompletionTokens > 0 {
 			cfg.MaxOutputTokens = opts.MaxCompletionTokens
 		}
-		if opts.Temperature > 0 {
-			cfg.Temperature = opts.Temperature
-		} else {
-			cfg.Temperature = 0.7
-		}
+
 		reqBody.GenerationConfig = cfg
 	}
+
 	jsonBody, err := json.Marshal(reqBody)
 	if err != nil {
 		return nil, err
@@ -126,10 +154,55 @@ func (p *GeminiProvider) CallAPI(ctx context.Context, messages []sdk.Message, st
 		}
 	}
 
+	if !streamMode {
+		defer resp.Body.Close()
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		var response GeminiResponse
+		if err := json.Unmarshal(body, &response); err != nil {
+			return nil, fmt.Errorf("failed to parse non-streaming JSON response: %w. Body: %s", err, string(body))
+		}
+
+		if response.PromptFeedback != nil && response.PromptFeedback.BlockReason != "" {
+			return nil, &ContentBlockedError{
+				Reason: response.PromptFeedback.BlockReason,
+				Body:   body,
+			}
+		}
+
+		if len(response.Candidates) > 0 {
+			candidate := response.Candidates[0]
+
+			if candidate.FinishReason == "SAFETY" || candidate.FinishReason == "RECITATION" {
+				return nil, &ContentBlockedError{
+					Reason: candidate.FinishReason,
+					Body:   body,
+				}
+			}
+
+			var fullText string
+			for _, part := range candidate.Content.Parts {
+				fullText += part.Text
+			}
+
+			if fullText == "" {
+
+				return nil, fmt.Errorf("non-streaming response body was successfully parsed but contained empty text (FinishReason: %s). Raw body: %s", candidate.FinishReason, string(body))
+			}
+
+			return io.NopCloser(bytes.NewReader([]byte(fullText))), nil
+		}
+
+		return nil, fmt.Errorf("non-streaming response body was successfully parsed but contained no candidates. Raw body: %s", string(body))
+	}
+
 	return resp.Body, nil
 }
 
-func (p *GeminiProvider) ParseStream(body io.Reader, onChunk func(string) error) error {
+func (p *GeminiProvider) ParseResponse(body io.Reader, onChunk func(string) error) error {
 	reader := bufio.NewReader(body)
 
 	for {
@@ -146,22 +219,31 @@ func (p *GeminiProvider) ParseStream(body io.Reader, onChunk func(string) error)
 				return nil
 			}
 
-			var chunk struct {
-				Candidates []struct {
-					Content struct {
-						Parts []struct {
-							Text string `json:"text"`
-						} `json:"parts"`
-					} `json:"content"`
-				} `json:"candidates"`
-			}
+			var chunk GeminiResponseChunk
 
-			if err := json.Unmarshal(line, &chunk); err == nil {
-				if len(chunk.Candidates) > 0 && len(chunk.Candidates[0].Content.Parts) > 0 {
-					if err := onChunk(chunk.Candidates[0].Content.Parts[0].Text); err != nil {
-						return err
+			if jsonErr := json.Unmarshal(line, &chunk); jsonErr == nil {
+				if len(chunk.Candidates) > 0 {
+					candidate := chunk.Candidates[0]
+
+					if candidate.FinishReason == "SAFETY" || candidate.FinishReason == "RECITATION" {
+						return &ContentBlockedError{Reason: candidate.FinishReason, Body: line}
+					}
+
+					if len(candidate.Content.Parts) > 0 {
+						text := candidate.Content.Parts[0].Text
+						if text != "" {
+							if chunkErr := onChunk(text); chunkErr != nil {
+								return chunkErr
+							}
+						}
+					}
+
+					if candidate.FinishReason == "STOP" || candidate.FinishReason == "MAX_TOKENS" {
+						return nil
 					}
 				}
+			} else {
+				continue
 			}
 		}
 

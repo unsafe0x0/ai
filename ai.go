@@ -8,8 +8,7 @@ import (
 type (
 	Message  = sdk.Message
 	SDK      = sdk.SDK
-	Provider = sdk.Provider
-	Options  = sdk.Options
+	CompletionRequest = sdk.CompletionRequest
 )
 
 func Anannas(apiKey string) *SDK {

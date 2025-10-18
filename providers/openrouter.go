@@ -1,7 +1,6 @@
 package providers
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -69,7 +68,7 @@ func (p *OpenRouterProvider) CallAPI(ctx context.Context, messages []sdk.Message
 	req.Header.Set("Authorization", "Bearer "+p.APIKey)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("HTTP-Referer", "https://github.com/unsafe0x0/ai")
-	req.Header.Set("X-Title", "ai-sdk")
+	req.Header.Set("X-Title", "unsafe0x0/ai")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -89,47 +88,6 @@ func (p *OpenRouterProvider) CallAPI(ctx context.Context, messages []sdk.Message
 	return resp.Body, nil
 }
 
-func (p *OpenRouterProvider) ParseStream(body io.Reader, onChunk func(string) error) error {
-	reader := bufio.NewReader(body)
-
-	for {
-		line, err := reader.ReadBytes('\n')
-		if len(line) > 0 {
-			line = bytes.TrimSpace(line)
-			if len(line) == 0 {
-				continue
-			}
-			if bytes.HasPrefix(line, []byte("data: ")) {
-				line = line[len("data: "):]
-			}
-			if bytes.Equal(line, []byte("[DONE]")) {
-				return nil
-			}
-
-			var chunk struct {
-				Choices []struct {
-					Delta struct {
-						Content string `json:"content"`
-					} `json:"delta"`
-				} `json:"choices"`
-			}
-
-			if err := json.Unmarshal(line, &chunk); err == nil {
-				for _, c := range chunk.Choices {
-					if c.Delta.Content != "" {
-						if err := onChunk(c.Delta.Content); err != nil {
-							return err
-						}
-					}
-				}
-			}
-		}
-
-		if err != nil {
-			if err == io.EOF {
-				return nil
-			}
-			return err
-		}
-	}
+func (p *OpenRouterProvider) ParseResponse(body io.Reader, onChunk func(string) error) error {
+	return base.ParseJsonStream(body, onChunk)
 }

@@ -95,7 +95,7 @@ func (p *AnthropicProvider) CallAPI(
 	return resp.Body, nil
 }
 
-func (p *AnthropicProvider) ParseStream(body io.Reader, onChunk func(string) error) error {
+func (p *AnthropicProvider) ParseResponse(body io.Reader, onChunk func(string) error) error {
 	reader := bufio.NewReader(body)
 
 	for {
