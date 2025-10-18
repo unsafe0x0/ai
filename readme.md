@@ -19,6 +19,7 @@ A simple Go SDK for interacting with LLM providers. Supports streaming completio
 
 ## Features
 
+- Easy to use Go SDK
 - Chat completions (non-streaming and streaming)
 - Easily switch between providers and models
 - Options for customizing requests (model, system prompt, max tokens, temperature, reasoning effort)
@@ -40,15 +41,15 @@ A simple Go SDK for interacting with LLM providers. Supports streaming completio
 
 ---
 
-- GroqCloud (`GroqCloud`)
-- Mistral (`Mistral`)
-- OpenRouter (`OpenRouter`)
-- OpenAI (`OpenAi`)
-- Perplexity (`Perplexity`)
+- Anannas (`Anannas`)
 - Anthropic (`Anthropic`)
 - Gemini (`Gemini`)
+- GroqCloud (`GroqCloud`)
+- Mistral (`Mistral`)
+- OpenAI (`OpenAi`)
+- OpenRouter (`OpenRouter`)
+- Perplexity (`Perplexity`)
 - Xai (`Xai`)
-- Anannas (`Anannas`)
 
 ## Project Structure
 
@@ -93,8 +94,14 @@ import "github.com/unsafe0x0/ai"
 To use a provider, initialize it with your API key using the provided constructor functions:
 
 ```go
-// OpenRouter
-client := ai.OpenRouter("YOUR_OPEN_ROUTER_API_KEY")
+// Anannas
+client := ai.Anannas("YOUR_ANANNAS_API_KEY")
+
+// Anthropic
+client := ai.Anthropic("YOUR_ANTHROPIC_API_KEY")
+
+// Gemini
+client := ai.Gemini("YOUR_GEMINI_API_KEY")
 
 // GroqCloud
 client := ai.GroqCloud("YOUR_GROQ_API_KEY")
@@ -105,20 +112,14 @@ client := ai.Mistral("YOUR_MISTRAL_API_KEY")
 // OpenAI
 client := ai.OpenAi("YOUR_OPENAI_API_KEY")
 
+// OpenRouter
+client := ai.OpenRouter("YOUR_OPEN_ROUTER_API_KEY")
+
 // Perplexity
 client := ai.Perplexity("YOUR_PERPLEXITY_API_KEY")
 
-// Anthropic
-client := ai.Anthropic("YOUR_ANTHROPIC_API_KEY")
-
-// Gemini
-client := ai.Gemini("YOUR_GEMINI_API_KEY")
-
 // Xai
 client := ai.Xai("YOUR_XAI_API_KEY")
-
-// Anannas
-client := ai.Anannas("YOUR_ANANNAS_API_KEY")
 ```
 
 ## Usage
@@ -138,14 +139,18 @@ resp := client.ChatCompletion(ctx, &ai.CompletionRequest{
 })
 
 if resp.Error != nil {
-	panic(resp.Error)
+	log.Fatalf("Chat completion failed: %v", resp.Error)
 }
 
 if resp.Stream != nil {
 	defer resp.Stream.Close()
-	io.Copy(os.Stdout, resp.Stream)
+	fmt.Println("Response:")
+	if _, err := io.Copy(os.Stdout, resp.Stream); err != nil {
+		log.Fatalf("Failed to read stream: %v", err)
+	}
+	fmt.Println()
 } else {
-	fmt.Println(resp.Content)
+	fmt.Println("Response:", resp.Content)
 }
 ```
 
@@ -160,7 +165,7 @@ if resp.Stream != nil {
 
 ## Examples
 
-All code examples for this SDK can be found in the [ai-sdk-examples](https://github.com/unsafe0x0/ai-sdk-examples) repository.
+All code examples for this SDK latest version can be found in the [ai-sdk-examples](https://github.com/unsafe0x0/ai-sdk-examples) repository.
 
 ## Contributing
 
@@ -177,6 +182,12 @@ Contributions are welcome!
 ### Issues
 
 If you find a bug or have a feature request, please open an issue on GitHub.
+
+## Contributors
+
+<a href="https://github.com/unsafe0x0/ai/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=unsafe0x0/ai" />
+</a>
 
 ---
 

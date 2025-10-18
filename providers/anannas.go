@@ -44,7 +44,6 @@ func (p *AnannasProvider) CallAPI(ctx context.Context, messages []sdk.Message, s
 		if opts.Model != "" {
 			body["model"] = opts.Model
 		}
-
 		if opts.MaxCompletionTokens != 0 {
 			body["max_tokens"] = opts.MaxCompletionTokens
 		}
