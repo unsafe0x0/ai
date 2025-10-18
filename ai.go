@@ -1,8 +1,8 @@
 package ai
 
 import (
-	"github.com/unsafe0x0/ai/providers"
-	"github.com/unsafe0x0/ai/sdk"
+	"github.com/unsafe0x0/ai/v2/providers"
+	"github.com/unsafe0x0/ai/v2/sdk"
 )
 
 type (

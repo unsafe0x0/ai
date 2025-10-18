@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/unsafe0x0/ai/sdk"
+	"github.com/unsafe0x0/ai/v2/sdk"
 )
 
 type APICaller interface {

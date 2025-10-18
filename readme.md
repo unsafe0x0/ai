@@ -1,7 +1,7 @@
 # AI SDK
 
 <p align="left">
-    <a href="https://github.com/unsafe0x0/ai-sdk/releases/tag/v2.0.0">
+    <a href="https://github.com/unsafe0x0/ai/releases/tag/v2.0.0">
         <img src="https://img.shields.io/badge/v2.0.0-blue.svg" alt="v2.0.0">
     </a>
     <img src="https://img.shields.io/badge/Go-00ADD8?logo=go&labelColor=white" alt="Go">
@@ -86,7 +86,7 @@ example/                 # Example usage of the SDK
 Import the SDK in your Go project:
 
 ```go
-import "github.com/unsafe0x0/ai"
+import "github.com/unsafe0x0/ai/v2"
 ```
 
 ## Declaring Providers
