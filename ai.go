@@ -6,9 +6,11 @@ import (
 )
 
 type (
-	Message  = sdk.Message
-	SDK      = sdk.SDK
+	Message           = sdk.Message
+	SDK               = sdk.SDK
 	CompletionRequest = sdk.CompletionRequest
+	Tool              = sdk.Tool
+	InputSchema       = sdk.InputSchema
 )
 
 func Anannas(apiKey string) *SDK {

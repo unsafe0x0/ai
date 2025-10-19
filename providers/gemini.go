@@ -26,8 +26,41 @@ func NewGeminiProvider(apiKey string) *GeminiProvider {
 	return p
 }
 
+type GeminiFunctionDeclaration struct {
+	Name        string            `json:"name"`
+	Description string            `json:"description"`
+	Parameters  *GeminiParameters `json:"parameters,omitempty"`
+}
+
+type GeminiParameters struct {
+	Type       string                       `json:"type"`
+	Properties map[string]GeminiPropertyDef `json:"properties"`
+	Required   []string                     `json:"required,omitempty"`
+}
+
+type GeminiPropertyDef struct {
+	Type        string `json:"type"`
+	Description string `json:"description,omitempty"`
+}
+
+type GeminiToolConfig struct {
+	FunctionDeclarations []GeminiFunctionDeclaration `json:"functionDeclarations,omitempty"`
+}
+
 type GeminiPart struct {
-	Text string `json:"text"`
+	Text             string                  `json:"text,omitempty"`
+	FunctionCall     *GeminiFunctionCall     `json:"functionCall,omitempty"`
+	FunctionResponse *GeminiFunctionResponse `json:"functionResponse,omitempty"`
+}
+
+type GeminiFunctionResponse struct {
+	Name     string         `json:"name"`
+	Response map[string]any `json:"response"`
+}
+
+type GeminiFunctionCall struct {
+	Name string         `json:"name"`
+	Args map[string]any `json:"args"`
 }
 
 type GeminiContent struct {
@@ -44,6 +77,7 @@ type GeminiRequest struct {
 	Contents          []GeminiContent   `json:"contents"`
 	SystemInstruction *GeminiContent    `json:"system_instruction,omitempty"`
 	GenerationConfig  *GenerationConfig `json:"generation_config,omitempty"`
+	Tools             *GeminiToolConfig `json:"tools,omitempty"`
 }
 
 type Candidate struct {
@@ -100,10 +134,63 @@ func (p *GeminiProvider) CallAPI(ctx context.Context, messages []sdk.Message, st
 			systemInstruction = &GeminiContent{
 				Parts: []GeminiPart{{Text: msg.Content}},
 			}
-		} else {
+			continue
+		}
+
+		if role == "tool" {
+			var response map[string]any
+			if err := json.Unmarshal([]byte(msg.Content), &response); err != nil {
+				response = map[string]any{"result": msg.Content}
+			}
+
+			functionName := ""
+			if len(geminiContents) > 0 {
+				lastContent := geminiContents[len(geminiContents)-1]
+				for _, part := range lastContent.Parts {
+					if part.FunctionCall != nil {
+						functionName = part.FunctionCall.Name
+						break
+					}
+				}
+			}
+
+			geminiContents = append(geminiContents, GeminiContent{
+				Role: "function",
+				Parts: []GeminiPart{{
+					FunctionResponse: &GeminiFunctionResponse{
+						Name:     functionName,
+						Response: response,
+					},
+				}},
+			})
+			continue
+		}
+		var parts []GeminiPart
+
+		if msg.Content != "" {
+			parts = append(parts, GeminiPart{Text: msg.Content})
+		}
+
+		if len(msg.ToolCalls) > 0 {
+			for _, toolCall := range msg.ToolCalls {
+				var args map[string]any
+				if err := json.Unmarshal(toolCall.Arguments, &args); err != nil {
+					args = make(map[string]any)
+				}
+
+				parts = append(parts, GeminiPart{
+					FunctionCall: &GeminiFunctionCall{
+						Name: toolCall.Name,
+						Args: args,
+					},
+				})
+			}
+		}
+
+		if len(parts) > 0 {
 			geminiContents = append(geminiContents, GeminiContent{
 				Role:  role,
-				Parts: []GeminiPart{{Text: msg.Content}},
+				Parts: parts,
 			})
 		}
 	}
@@ -125,6 +212,11 @@ func (p *GeminiProvider) CallAPI(ctx context.Context, messages []sdk.Message, st
 			cfg.MaxOutputTokens = opts.MaxCompletionTokens
 		}
 
+		if len(opts.Tools) > 0 {
+			toolConfig := convertSDKToolsToProviderTools(opts.Tools)
+			reqBody.Tools = toolConfig
+		}
+
 		reqBody.GenerationConfig = cfg
 	}
 
@@ -134,6 +226,7 @@ func (p *GeminiProvider) CallAPI(ctx context.Context, messages []sdk.Message, st
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonBody))
+
 	if err != nil {
 		return nil, err
 	}
@@ -184,8 +277,37 @@ func (p *GeminiProvider) CallAPI(ctx context.Context, messages []sdk.Message, st
 			}
 
 			var fullText string
-			for _, part := range candidate.Content.Parts {
-				fullText += part.Text
+			var toolCalls []sdk.ToolCallRequest
+			for i, part := range candidate.Content.Parts {
+				if part.Text != "" {
+					fullText += part.Text
+				}
+
+				if part.FunctionCall != nil {
+					argsJSON, err := json.Marshal(part.FunctionCall.Args)
+					if err != nil {
+						return nil, fmt.Errorf("failed to marshal function call args: %w", err)
+					}
+
+					toolCalls = append(toolCalls, sdk.ToolCallRequest{
+						ID:        fmt.Sprintf("call_%d", i),
+						Name:      part.FunctionCall.Name,
+						Arguments: json.RawMessage(argsJSON),
+					})
+				}
+			}
+
+			if len(toolCalls) > 0 {
+				response := &sdk.CompletionResponse{
+					Content:   fullText,
+					ToolCalls: toolCalls,
+					Role:      "assistant",
+				}
+				responseJSON, err := json.Marshal(response)
+				if err != nil {
+					return nil, fmt.Errorf("failed to marshal completion response: %w", err)
+				}
+				return io.NopCloser(bytes.NewReader(responseJSON)), nil
 			}
 
 			if fullText == "" {
@@ -253,5 +375,44 @@ func (p *GeminiProvider) ParseResponse(body io.Reader, onChunk func(string) erro
 			}
 			return err
 		}
+	}
+}
+
+func convertSDKToolsToProviderTools(sdkTools map[string]sdk.Tool) *GeminiToolConfig {
+	if len(sdkTools) == 0 {
+		return nil
+	}
+
+	declarations := make([]GeminiFunctionDeclaration, 0, len(sdkTools))
+
+	for name, tool := range sdkTools {
+		var required []string
+		properties := make(map[string]GeminiPropertyDef)
+
+		for propName, prop := range tool.InputSchema {
+			// Convert SDK property to Gemini property (without Required field)
+			properties[propName] = GeminiPropertyDef{
+				Type:        prop.Type,
+				Description: prop.Description,
+			}
+
+			if prop.Required {
+				required = append(required, propName)
+			}
+		}
+
+		declarations = append(declarations, GeminiFunctionDeclaration{
+			Name:        name,
+			Description: tool.Description,
+			Parameters: &GeminiParameters{
+				Type:       "object",
+				Properties: properties,
+				Required:   required,
+			},
+		})
+	}
+
+	return &GeminiToolConfig{
+		FunctionDeclarations: declarations,
 	}
 }
