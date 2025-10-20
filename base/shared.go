@@ -4,7 +4,10 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
+
+	"github.com/unsafe0x0/ai/v2/sdk"
 )
 
 func ParseJsonStream(body io.Reader, onChunk func(string) error) error {
@@ -52,21 +55,56 @@ func ParseJsonStream(body io.Reader, onChunk func(string) error) error {
 	}
 }
 
-func ExtractJsonResponse(body []byte) (string, error) {
+// ExtractJsonResponse now returns structured data
+func ExtractJsonResponse(body []byte) (*sdk.CompletionResponse, error) {
+
+	var compResp sdk.CompletionResponse
+
+	if err := json.Unmarshal(body, &compResp); err == nil {
+		if compResp.Role != "" || len(compResp.ToolCalls) > 0 {
+			return &compResp, nil
+		}
+	}
+
 	var parsed struct {
 		Choices []struct {
 			Message struct {
-				Content string `json:"content"`
+				Role      string `json:"role"`
+				Content   string `json:"content,omitempty"`
+				ToolCalls []struct {
+					ID        string `json:"id"`
+					Name      string `json:"name"`
+					Arguments string `json:"arguments"`
+				} `json:"tool_calls,omitempty"`
 			} `json:"message"`
 		} `json:"choices"`
 	}
 
 	if err := json.Unmarshal(body, &parsed); err != nil {
-		return string(body), nil
+		return nil, err
 	}
 
-	if len(parsed.Choices) > 0 {
-		return parsed.Choices[0].Message.Content, nil
+	fmt.Printf("parsed %v", parsed)
+
+	if len(parsed.Choices) == 0 {
+		return &sdk.CompletionResponse{}, nil
 	}
-	return string(body), nil
+
+	msg := parsed.Choices[0].Message
+
+	// Convert tool calls to SDK format
+	toolCalls := make([]sdk.ToolCallRequest, 0, len(msg.ToolCalls))
+	for _, tc := range msg.ToolCalls {
+		toolCalls = append(toolCalls, sdk.ToolCallRequest{
+			ID:        tc.ID,
+			Name:      tc.Name,
+			Arguments: json.RawMessage(tc.Arguments),
+		})
+	}
+
+	return &sdk.CompletionResponse{
+		Content:   msg.Content,
+		ToolCalls: toolCalls,
+		Role:      msg.Role,
+	}, nil
 }

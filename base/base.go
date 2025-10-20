@@ -33,23 +33,25 @@ func (p *Provider) CreateCompletion(
 	ctx context.Context,
 	messages []sdk.Message,
 	opts *sdk.Options,
-) (string, error) {
+) (*sdk.CompletionResponse, error) {
 	messages = p.AddSystemPrompt(messages, opts)
 
 	body, err := p.CallAPI(ctx, messages, false, opts)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer body.Close()
 
 	respBytes, err := io.ReadAll(body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	content, err := ExtractJsonResponse(respBytes)
 	if err != nil {
-		return string(respBytes), nil
+		return &sdk.CompletionResponse{
+			Content: string(respBytes),
+		}, nil
 	}
 
 	return content, nil
