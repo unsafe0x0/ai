@@ -1,5 +1,6 @@
 // converts common tool definitions for all providers
 // each provider needs to implement its own structures
+
 package sdk
 
 import (

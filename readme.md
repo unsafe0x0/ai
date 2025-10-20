@@ -24,6 +24,10 @@ A simple Go SDK for interacting with LLM providers. Supports streaming completio
 - Easily switch between providers and models
 - Options for customizing requests (model, system prompt, max tokens, temperature, reasoning effort)
 
+## Upcoming Features
+
+- Support for tools calling
+
 ## Providers
 
    <div align="left">

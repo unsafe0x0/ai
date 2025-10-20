@@ -1,3 +1,5 @@
+// Options for AI model configuration
+
 package sdk
 
 type Options struct {

@@ -1,3 +1,5 @@
+// SDK entry point and provider initializers
+
 package ai
 
 import (

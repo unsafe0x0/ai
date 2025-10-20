@@ -1,3 +1,5 @@
+// shared utilities and base structures for providers
+
 package base
 
 import (
@@ -8,6 +10,10 @@ import (
 	"github.com/unsafe0x0/ai/v2/sdk"
 )
 
+type Provider struct {
+	APICaller
+}
+
 type APICaller interface {
 	CallAPI(ctx context.Context, messages []sdk.Message, streamMode bool, opts *sdk.Options) (io.ReadCloser, error)
 }
@@ -16,10 +22,7 @@ type StreamParser interface {
 	ParseResponse(body io.Reader, onChunk func(string) error) error
 }
 
-type Provider struct {
-	APICaller
-}
-
+// adds a system prompt to the beginning of the messages
 func (p *Provider) AddSystemPrompt(messages []sdk.Message, opts *sdk.Options) []sdk.Message {
 	if opts != nil && opts.SystemPrompt != "" {
 		if len(messages) == 0 || messages[0].Role != "system" {
@@ -29,6 +32,7 @@ func (p *Provider) AddSystemPrompt(messages []sdk.Message, opts *sdk.Options) []
 	return messages
 }
 
+// creates a completion by calling the API and processing the response
 func (p *Provider) CreateCompletion(
 	ctx context.Context,
 	messages []sdk.Message,
@@ -57,6 +61,7 @@ func (p *Provider) CreateCompletion(
 	return content, nil
 }
 
+// creates a streaming completion by calling the API and returning a ReadCloser for the streaming of response
 func (p *Provider) CreateCompletionStream(
 	ctx context.Context,
 	messages []sdk.Message,

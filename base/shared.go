@@ -1,15 +1,17 @@
+//  shared utilities for parsing json responses
+
 package base
 
 import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 
 	"github.com/unsafe0x0/ai/v2/sdk"
 )
 
+// parses a streaming JSON response and calls onChunk for each content chunk
 func ParseJsonStream(body io.Reader, onChunk func(string) error) error {
 	reader := bufio.NewReader(body)
 
@@ -55,7 +57,7 @@ func ParseJsonStream(body io.Reader, onChunk func(string) error) error {
 	}
 }
 
-// ExtractJsonResponse now returns structured data
+// extracts a CompletionResponse from a JSON response body
 func ExtractJsonResponse(body []byte) (*sdk.CompletionResponse, error) {
 
 	var compResp sdk.CompletionResponse
@@ -83,8 +85,6 @@ func ExtractJsonResponse(body []byte) (*sdk.CompletionResponse, error) {
 	if err := json.Unmarshal(body, &parsed); err != nil {
 		return nil, err
 	}
-
-	fmt.Printf("parsed %v", parsed)
 
 	if len(parsed.Choices) == 0 {
 		return &sdk.CompletionResponse{}, nil

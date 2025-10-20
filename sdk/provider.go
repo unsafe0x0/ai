@@ -1,3 +1,5 @@
+// SDK configuration
+
 package sdk
 
 import (
@@ -41,14 +43,14 @@ func (s *Stream) Close() error {
 }
 
 type CompletionRequest struct {
-	Messages        []Message
-	Model           string
-	SystemPrompt    string
-	MaxTokens       int
-	Temperature     float32
-	ReasoningEffort string
-	Stream          bool
-	Tools           map[string]Tool
+	Messages        []Message                                   // conversation history
+	Model           string                                      // model name
+	SystemPrompt    string                                      // initial system prompt
+	MaxTokens       int                                         // max tokens for completion
+	Temperature     float32                                     // sampling temperature
+	ReasoningEffort string                                      // e.g., "low", "medium", "high"
+	Stream          bool                                        // whether to stream the response
+	Tools           map[string]Tool                             // available tools for tool calls
 	MaxToolSteps    int                                         // for preventing infinite loop error, defaults to 5
 	OnToolCall      func(toolName string, args json.RawMessage) // for ui callbacks
 }
@@ -59,6 +61,7 @@ func (sdk *SDK) ChatCompletion(ctx context.Context, req *CompletionRequest) *Res
 		req.MaxToolSteps = 5
 	}
 
+	// setting up options
 	opts := &Options{
 		Model:               req.Model,
 		SystemPrompt:        req.SystemPrompt,

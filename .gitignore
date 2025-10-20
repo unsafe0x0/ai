@@ -43,3 +43,6 @@ Thumbs.db
 
 # Example files
 example/main.go
+
+# Dependency files
+go.sum

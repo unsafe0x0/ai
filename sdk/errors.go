@@ -1,3 +1,5 @@
+// handling api errors
+
 package sdk
 
 import "fmt"
