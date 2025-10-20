@@ -42,4 +42,4 @@ Thumbs.db
 .env.*
 
 # Example files
-# /example/main.go
+example/main.go
