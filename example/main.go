@@ -63,7 +63,7 @@ func main() {
 			SystemPrompt:    "You are a helpful assistant.",
 			Temperature:     0.7,
 			ReasoningEffort: "low",
-			Stream:          false,
+			Stream:          true,
 			Tools: map[string]sdk.Tool{
 				"weather_tool": {
 					Description: "Get the weather in a location",
@@ -117,7 +117,7 @@ func main() {
 						return string(res), nil
 					},
 				},
-				"fetch_web_page": sdk.Tool{
+				"fetch_web_page": {
 					Description: "Fetches a webpage using curl and returns its HTML content.",
 					InputSchema: sdk.InputSchema{
 						"url": {
@@ -142,6 +142,10 @@ func main() {
 						return string(out), nil
 					},
 				},
+			},
+			MaxToolSteps: 10,
+			OnToolCall: func(toolName string, args json.RawMessage) {
+				fmt.Printf("%s Tool called\n", toolName)
 			},
 		})
 
